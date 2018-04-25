@@ -1,0 +1,9 @@
+% Model
+
+[Model]
+Architecture: Baseline
+% alternatives: DL or PGM
+
+[ModelSpecificParamters]
+...
+

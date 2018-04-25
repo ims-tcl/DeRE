@@ -1,0 +1,3 @@
+<corpus>
+<instance id="1234" text="I am happy because of cookies"/>	
+</corpus>

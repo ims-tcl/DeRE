@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE deREschema SYSTEM "dere.dtd">
+<!-- http://2011.bionlp-st.org/home/genia-event-extraction-genia -->
+<deREschema name="BioNLP-ST 2009" version="0.01" author="Roman Klinger">
+  <spantypes>
+    <span name="Gene"/>
+    <span name="Positive Regulation Trigger" anchors="Positive Regulation"/>
+    <span name="Negative Regulation Trigger" anchors="Negative Regulation"/>
+    <span name="Binding Trigger" anchors="Binding"/>
+  </spantypes>
+  <frames>
+    <frame name="Positive Regulation">
+      <slot name="EventTrigger" types="Trigger" cardinality="1"/>
+      <slot name="Cause" types="Gene" mincardinality="0" maxcardinality="1"/>
+      <slot name="Theme" types="Gene,Positive Regulation,Negative Regulation" cardinality="1"/>
+    </frame>
+    <frame  name="Negative Regulation">
+      <slot name="EventTrigger" types="Trigger" cardinality="1"/>
+      <slot name="Cause" types="Gene" mincardinality="0" maxcardinality="1"/>
+      <slot name="Theme" types="Gene,Positive Regulation,Negative Regulation" cardinality="1"/>
+    </frame>
+    <frame name="Binding">
+      <slot name="EventTrigger" types="Trigger" cardinality="1"/>
+      <slot name="Theme" types="Gene" mincardinality="1"/>
+    </frame>
+  </frames>
+</deREschema>

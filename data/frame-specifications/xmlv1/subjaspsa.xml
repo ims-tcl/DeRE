@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE deREschema SYSTEM "dere.dtd">
+<!-- http://www.romanklinger.de/usagecorpus/ -->
+<!-- http://www.romanklinger.de/scare/ -->
+<deREschema name="Aspect-based sentiment analysis" version="0.01" author="Roman Klinger">
+  <spantypes>
+    <span name="subjective"/>
+    <span name="aspect"/>
+  </spantypes>
+  <frames>
+    <frame name="Positive"><slot name="phrase" types="subjective"/></frame>
+    <frame name="Negative"><slot name="phrase" types="subjective"/></frame>
+    <frame name="Neutral"><slot name="phrase" types="subjective"/></frame>
+    <frame name="Foreign"><slot name="phrase" types="aspect"/></frame>
+    <frame name="Related"><slot name="phrase" types="aspect"/></frame>
+    <frame name="Relation">
+      <slot name="Subjective Phrase" types="Positive,Negative,Neutral,subjective" cardinality="1"/>
+      <slot name="Aspect Phrase" types="Forein,Related,aspect" cardinality="1"/>
+    </frame>
+  </frames>
+</deREschema>
