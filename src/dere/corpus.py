@@ -1,36 +1,18 @@
-import pickle
 from typing import List
-
-class Corpus:
-    def __init__(self):
-        self.instances: List[Instance] = []
 
 
 class Annotation:
     ...
 
 
-class Result:
-    def __init__(self, **metrics):
-        for metric in metrics:
-            setattr(self, metric, metrics[metric])
-
-    def __str__(self) -> str:
-        ...  # "toString"
-
-    def __repr__(self) -> str:
-        ...  # "print"
-
-    def __sub__(self, other):  # Result) -> Result:
-        ...  # "compare"
-        # r1 = Result(...)
-        # r2 = Result(...)
-        # difference = r2 - r1
-
 class Instance:
     def __init__(self, text: str, annotations: List[Annotation]) -> None:
         self.text = text
         self.annotations = []
+
+class Corpus:
+    def __init__(self):
+        self.instances: List[Instance] = []
 
 
 class SpanAnnotation(Annotation):
@@ -53,5 +35,3 @@ class FrameAnnotation(Annotation):
 class FrameRepresentation:
     def __init__(self, schema_file: str) -> None:
         ...
-
-

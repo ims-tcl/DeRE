@@ -1,2 +1,1 @@
-from .skeleton import *
-from .readers import *
+from .result import Result

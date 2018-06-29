@@ -1,5 +1,6 @@
-from dere import Corpus, Result
+from dere.corpus import Corpus
 from dere.models import Model
+from dere import Result
 
 
 class BaselineModel(Model):
