@@ -6,9 +6,9 @@ class Annotation:
 
 
 class Instance:
-    def __init__(self, text: str, annotations: List[Annotation]) -> None:
+    def __init__(self, text: str, annotations: List[Annotation] = []) -> None:
         self.text = text
-        self.annotations = []
+        self.annotations = annotations
 
 class Corpus:
     def __init__(self):

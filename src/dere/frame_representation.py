@@ -1,3 +1,0 @@
-class FrameRepresentation:
-    def __init__(self, schema_file: str) -> None:
-        ...
