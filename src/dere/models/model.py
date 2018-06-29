@@ -1,5 +1,5 @@
 from dere.corpus import Corpus
-from dere import Result
+from dere import FrameRepresentation, Result
 class Model:
     def __init__(self, schema_file: str) -> None:
         self.fr = FrameRepresentation(schema_file)

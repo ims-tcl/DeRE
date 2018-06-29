@@ -30,8 +30,3 @@ class SlotAnnotation(Annotation):
 class FrameAnnotation(Annotation):
     def __init__(self, slots: List[SlotAnnotation]) -> None:
         self.slots = slots
-
-
-class FrameRepresentation:
-    def __init__(self, schema_file: str) -> None:
-        ...

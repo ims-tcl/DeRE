@@ -1,4 +1,5 @@
 import click
+import pickle
 
 #path hackery to get imports working as intended
 import sys
