@@ -5,7 +5,7 @@ from dere import Result
 
 class Model:
     def __init__(self, schema_file: str) -> None:
-        self.fr = dere.schema.parse_schema(schema_file)
+        ...
 
     # only minimal logic here, things that all models (might) need
     def train(self, corpus: Corpus) -> None:
