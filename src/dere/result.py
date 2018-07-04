@@ -1,17 +1,13 @@
+from dataclasses import dataclass
+
+@dataclass
 class Result:
-    def __init__(self, **metrics):
-        for metric in metrics:
-            setattr(self, metric, metrics[metric])
+    precision: float
+    recall: float
 
-    def __str__(self) -> str:
-        ...  # "toString"
-
-    def __repr__(self) -> str:
-        ...  # "print"
-
-    def __sub__(self, other):  # Result) -> Result: (this should work in 3.7)
-        ...  # "compare"
-        # r1 = Result(...)
-        # r2 = Result(...)
-        # difference = r2 - r1
-        
+    def __sub__(self, other: Result) -> Result:
+        # this should work now in Python 3.7
+        return Result(**{
+            attribute: getattr(self, attribute) - getattr(other, attribute)
+            for attribute in ["precision", "recall"]
+        })
