@@ -1,33 +1,34 @@
 from typing import List
+from dataclasses import dataclass
 
 
 class Annotation:
     ...
 
 
+@dataclass
 class Instance:
-    def __init__(self, text: str, annotations: List[Annotation] = []) -> None:
-        self.text = text
-        self.annotations = annotations
+    text: str
+    annotations: List[Annotation] = []
 
-
+        
+@dataclass
 class Corpus:
-    def __init__(self):
-        self.instances: List[Instance] = []
+    instances: List[Instance] = []
 
 
+@dataclass
 class SpanAnnotation(Annotation):
-    def __init__(self, left: int, right: int, type_: str) -> None:
-        self.left = left
-        self.right = right
-        self.type_ = type_
+    left: int
+    right: int
+    type_: str
 
 
+@dataclass
 class SlotAnnotation(Annotation):
-    def __init__(self, type_: str) -> None:
-        self.type_ = type_
+    type_: str
 
 
+@dataclass
 class FrameAnnotation(Annotation):
-    def __init__(self, slots: List[SlotAnnotation]) -> None:
-        self.slots = slots
+    slots: List[SlotAnnotation]
