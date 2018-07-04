@@ -9,11 +9,9 @@ class Result:
     def __repr__(self) -> str:
         ...  # "print"
 
-    def __sub__(self, other):  # Result) -> Result:
+    def __sub__(self, other):  # Result) -> Result: (this should work in 3.7)
         ...  # "compare"
         # r1 = Result(...)
         # r2 = Result(...)
         # difference = r2 - r1
-
-
-
+        

@@ -12,4 +12,3 @@ class BaselineModel(Model):
 
     # not needed in the baseline model:
     # def eval(self, corpus: Corpus, predicted: list) -> Result: ...
-

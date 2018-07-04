@@ -10,6 +10,7 @@ class Instance:
         self.text = text
         self.annotations = annotations
 
+
 class Corpus:
     def __init__(self):
         self.instances: List[Instance] = []

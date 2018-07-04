@@ -1,6 +1,8 @@
 from dere.corpus import Corpus
 import dere.schema
 from dere import Result
+
+
 class Model:
     def __init__(self, schema_file: str) -> None:
         self.fr = dere.schema.parse_schema(schema_file)

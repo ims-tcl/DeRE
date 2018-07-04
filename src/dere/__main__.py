@@ -1,11 +1,12 @@
 import click
 import pickle
 
-#path hackery to get imports working as intended
+# path hackery to get imports working as intended
 import sys
 import os
+
 path = os.path.dirname(sys.modules[__name__].__file__)
-path = os.path.join(path, '..')
+path = os.path.join(path, "..")
 sys.path.insert(0, path)
 
 
