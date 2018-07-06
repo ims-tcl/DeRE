@@ -1,5 +1,5 @@
 from typing import List
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 
 class Annotation:
@@ -9,12 +9,12 @@ class Annotation:
 @dataclass
 class Instance:
     text: str
-    annotations: List[Annotation] = []
+    annotations: List[Annotation] = field(default_factory=lambda: [])
 
 
 @dataclass
 class Corpus:
-    instances: List[Instance] = []
+    instances: List[Instance] = field(default_factory=lambda: [])
 
 
 @dataclass

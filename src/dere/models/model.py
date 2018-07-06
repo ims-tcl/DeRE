@@ -1,10 +1,10 @@
 from dere.corpus import Corpus
-import dere.schema
+from dere.schema import TaskSchema
 from dere import Result
 
 
 class Model:
-    def __init__(self, schema_file: str) -> None:
+    def __init__(self, schema: TaskSchema) -> None:
         ...
 
     # only minimal logic here, things that all models (might) need
