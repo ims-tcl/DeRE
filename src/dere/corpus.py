@@ -11,7 +11,7 @@ class Instance:
     text: str
     annotations: List[Annotation] = []
 
-        
+
 @dataclass
 class Corpus:
     instances: List[Instance] = []
