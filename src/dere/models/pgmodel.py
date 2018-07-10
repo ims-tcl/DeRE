@@ -7,8 +7,8 @@ class PGModel(Model):
     def train(self, corpus: Corpus) -> None:
         ...
 
-    def predict(self, corpus: Corpus) -> list:
+    def predict(self, corpus: Corpus) -> Corpus:
         ...
 
-    def eval(self, corpus: Corpus, predicted: list) -> Result:
+    def eval(self, corpus: Corpus, predicted: Corpus) -> Result:
         ...

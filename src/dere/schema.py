@@ -13,7 +13,13 @@ class SpanType:
 @dataclass
 class FrameType:
     name: str
-    slots: List[SlotType] = field(default_factory=lambda: [])
+    slot_types: List[SlotType] = field(default_factory=lambda: [])
+
+    def slot_type_lookup(self, name: str) -> Optional[SlotType]:
+        for st in self.slot_types:
+            if st.name == name:
+                return st
+        return None
 
 
 @dataclass
@@ -28,6 +34,25 @@ class SlotType:
 class TaskSchema:
     span_types: List[SpanType]
     frame_types: List[FrameType]
+
+    def type_lookup(self, name: str) -> Optional[Union[SpanType, FrameType]]:
+        span_possible = True
+        frame_possible = True
+        if name.startswith("span:"):
+            name = name[5:]
+            frame_possible = False
+        elif name.startswith("frame:"):
+            name = name[6:]
+            span_possible = False
+        if span_possible:
+            for st in self.span_types:
+                if st.name == name:
+                    return st
+        if frame_possible:
+            for ft in self.frame_types:
+                if ft.name == name:
+                    return ft
+        return None
 
 
 # Todo: xml schema validation
@@ -104,6 +129,6 @@ def load_task_schema_file(path: str) -> TaskSchema:
                     )
                     slots.append(slot)
                 frame_type = frame_types[frame_name]
-                frame_type.slots = slots
+                frame_type.slot_types = slots
     # now that our symbol table is full, make sure the slot types are right
     return TaskSchema(list(span_types.values()), list(frame_types.values()))

@@ -57,7 +57,7 @@ def _train(
     with open(model_path, "rb") as f:
         model = pickle.load(f)
 
-    corpus_reader = CORPUS_READERS[corpus_format](corpus_path)
+    corpus_reader = CORPUS_READERS[corpus_format](corpus_path, model.schema)
     corpus = corpus_reader.load()
 
     model.train(corpus)
@@ -80,7 +80,7 @@ def _predict(
     with open(model_path, "rb") as f:
         model = pickle.load(f)
 
-    corpus_reader = CORPUS_READERS[corpus_format](corpus_path)
+    corpus_reader = CORPUS_READERS[corpus_format](corpus_path, model.schema)
     corpus = corpus_reader.load()
 
     predictions = model.predict(corpus)
@@ -102,7 +102,7 @@ def _evaluate(
     with open(model_path, "rb") as f:
         model = pickle.load(f)
 
-    corpus_reader = CORPUS_READERS[corpus_format](corpus_path)
+    corpus_reader = CORPUS_READERS[corpus_format](corpus_path, model.schema)
     corpus = corpus_reader.load()
 
     predictions = model.predict(corpus)
