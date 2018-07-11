@@ -1,3 +1,3 @@
-from .model import Model
-from .baseline.baseline_model import BaselineModel
-from .pgmodel import PGModel
+from ._model import Model
+from ._baseline._baseline_model import BaselineModel
+from ._pgmodel import PGModel

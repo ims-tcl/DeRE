@@ -1,1 +1,1 @@
-from .result import Result
+from ._result import Result
