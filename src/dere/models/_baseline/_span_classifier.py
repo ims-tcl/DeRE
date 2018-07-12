@@ -1,4 +1,4 @@
-# Author: Heike
+# Author: Heike, Sean
 import copy
 import logging
 import string
