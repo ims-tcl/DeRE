@@ -2,14 +2,11 @@ import os
 from itertools import product
 from typing import Optional, Dict, List, Sequence, cast
 
-from nltk.tokenize import TreebankWordTokenizer
 
 from dere.corpus import Corpus, Instance
 from dere.corpus import Span, Frame, Filler
 from dere.readers import CorpusReader
 from dere.schema import SpanType, FrameType
-
-word_tokenizer = TreebankWordTokenizer()
 
 
 class BRATCorpusReader(CorpusReader):

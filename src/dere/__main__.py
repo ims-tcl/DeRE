@@ -1,5 +1,6 @@
 import click
 import pickle
+import logging
 
 # path hackery to get imports working as intended
 import sys
@@ -16,6 +17,8 @@ from dere.schema import load_task_schema_file
 CORPUS_READERS = {"BRAT": BRATCorpusReader, "XML123": XML123CorpusReader}
 
 MODELS = {"baseline": BaselineModel, "pgm": PGModel}
+
+logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 
 
 @click.group()
