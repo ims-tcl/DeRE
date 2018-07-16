@@ -2,7 +2,7 @@ from __future__ import annotations
 from typing import List, Union, Set, Dict
 from dataclasses import dataclass, field
 
-from dere.schema import SpanType, FrameType, SlotType
+from dere.taskspec import SpanType, FrameType, SlotType
 
 
 @dataclass

@@ -1,6 +1,6 @@
 from dere.corpus import Corpus
 from dere.models import Model
-from dere.schema import TaskSchema
+from dere.taskspec import TaskSpecification
 from dere import Result
 
 import numpy as np
@@ -10,10 +10,10 @@ from ._span_classifier import SpanClassifier
 
 
 class BaselineModel(Model):
-    def __init__(self, schema: TaskSchema) -> None:
-        self.schema = schema
-        self._span_classifier = SpanClassifier(schema)
-        # self._slot_classifier = SlotClassifier(schema)
+    def __init__(self, spec: TaskSpecification) -> None:
+        self.spec = spec
+        self._span_classifier = SpanClassifier(spec)
+        # self._slot_classifier = SlotClassifier(spec)
 
     def train(self, corpus: Corpus) -> None:
         self._span_classifier.train(corpus)

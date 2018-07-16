@@ -10,7 +10,7 @@ from nltk.stem import PorterStemmer
 from nltk.tokenize import TreebankWordTokenizer
 
 
-from dere.schema import TaskSchema, SpanType
+from dere.taskspec import TaskSpecification, SpanType
 from dere.corpus import Corpus, Instance, Span
 
 
@@ -24,17 +24,17 @@ class SpanClassifier:
 
     def __init__(
         self,
-        schema: TaskSchema,
+        spec: TaskSpecification,
         gazetteer_filename: str = "dere/models/_baseline/training_gazetteer"
     ) -> None:
-        self.target_span_types = list(schema.span_types)
+        self.target_span_types = list(spec.span_types)
         self.gazetteer: Dict[str, Set[str]] = {}
         self.read_gazetteer(gazetteer_filename)
         self.logger = logging.getLogger(__name__)
         self.target2classifier: Dict[str, CRF] = {}
         self.ps = PorterStemmer()
-        # @Sean: TODO: read from schema which spans are given (if any)
-        given_span_types = [schema.type_lookup("Protein")]
+        # @Sean: TODO: read from spec which spans are given (if any)
+        given_span_types = [spec.type_lookup("Protein")]
         for given_span_type in given_span_types:
             assert type(given_span_type) is SpanType
         self.given_span_types = cast(List[SpanType], given_span_types)

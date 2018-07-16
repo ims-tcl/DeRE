@@ -31,7 +31,7 @@ class SlotType:
 
 
 @dataclass
-class TaskSchema:
+class TaskSpecification:
     span_types: List[SpanType]
     frame_types: List[FrameType]
 
@@ -56,7 +56,7 @@ class TaskSchema:
 
 
 # Todo: xml schema validation
-def load_task_schema_file(path: str) -> TaskSchema:
+def load_from_xml(path: str) -> TaskSpecification:
     tree = ET.parse(path)
     root = tree.getroot()
 
@@ -131,4 +131,6 @@ def load_task_schema_file(path: str) -> TaskSchema:
                 frame_type = frame_types[frame_name]
                 frame_type.slot_types = slots
     # now that our symbol table is full, make sure the slot types are right
-    return TaskSchema(list(span_types.values()), list(frame_types.values()))
+    return TaskSpecification(
+        list(span_types.values()), list(frame_types.values())
+    )

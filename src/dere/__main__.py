@@ -11,7 +11,7 @@ sys.path.insert(0, path)  # noqa
 
 from dere.readers import CorpusReader, BRATCorpusReader, XML123CorpusReader
 from dere.models import BaselineModel, PGModel
-from dere.schema import load_task_schema_file
+import dere.taskspec
 
 
 CORPUS_READERS = {"BRAT": BRATCorpusReader, "XML123": XML123CorpusReader}
@@ -28,16 +28,16 @@ def cli() -> None:
 
 @cli.command()
 @click.option("--model", default="baseline")
-@click.option("--schema", required=True)
+@click.option("--spec", required=True)
 @click.option("--outfile", default="bare_model.pkl")
-def build(model: str, schema: str, outfile: str) -> None:
-    _build(model, schema, outfile)
+def build(model: str, spec: str, outfile: str) -> None:
+    _build(model, spec, outfile)
 
 
-def _build(model_name: str, schema_path: str, out_path: str) -> None:
-    print("building with", model_name, schema_path, out_path)
-    schema = load_task_schema_file(schema_path)
-    model = MODELS[model_name](schema)
+def _build(model_name: str, spec_path: str, out_path: str) -> None:
+    print("building with", model_name, spec_path, out_path)
+    spec = dere.taskspec.load_from_xml(spec_path)
+    model = MODELS[model_name](spec)
     with open(out_path, "wb") as f:
         pickle.dump(model, f)
 
@@ -60,7 +60,7 @@ def _train(
     with open(model_path, "rb") as f:
         model = pickle.load(f)
 
-    corpus_reader = CORPUS_READERS[corpus_format](corpus_path, model.schema)
+    corpus_reader = CORPUS_READERS[corpus_format](corpus_path, model.spec)
     corpus = corpus_reader.load()
 
     model.train(corpus)
@@ -83,7 +83,7 @@ def _predict(
     with open(model_path, "rb") as f:
         model = pickle.load(f)
 
-    corpus_reader = CORPUS_READERS[corpus_format](corpus_path, model.schema)
+    corpus_reader = CORPUS_READERS[corpus_format](corpus_path, model.spec)
     corpus = corpus_reader.load()
 
     predictions = model.predict(corpus)
@@ -105,7 +105,7 @@ def _evaluate(
     with open(model_path, "rb") as f:
         model = pickle.load(f)
 
-    corpus_reader = CORPUS_READERS[corpus_format](corpus_path, model.schema)
+    corpus_reader = CORPUS_READERS[corpus_format](corpus_path, model.spec)
     corpus = corpus_reader.load()
 
     predictions = model.predict(corpus)

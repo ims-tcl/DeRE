@@ -6,7 +6,7 @@ from typing import Optional, Dict, List, Sequence, cast
 from dere.corpus import Corpus, Instance
 from dere.corpus import Span, Frame, Filler
 from dere.readers import CorpusReader
-from dere.schema import SpanType, FrameType
+from dere.taskspec import SpanType, FrameType
 
 
 class BRATCorpusReader(CorpusReader):
@@ -53,7 +53,7 @@ class BRATCorpusReader(CorpusReader):
                     if line[0] == "T":  # Text spans
                         tag, type_begin_end, span_string = line.split("\t")
                         span_type_name, begin, end = type_begin_end.split(" ")
-                        span_type = self._schema.type_lookup(
+                        span_type = self._spec.type_lookup(
                             "span:" + span_type_name
                         )
                         if type(span_type) is not SpanType:
@@ -73,7 +73,7 @@ class BRATCorpusReader(CorpusReader):
                     elif line[0] == "E":  # Events = frames
                         tag, *kvpairs = line.strip().split()
                         frame_type_name, _ = kvpairs[0].rsplit(":", 1)
-                        frame_type = self._schema.type_lookup(
+                        frame_type = self._spec.type_lookup(
                             "frame:" + frame_type_name
                         )
                         if type(frame_type) is not FrameType:
