@@ -17,7 +17,7 @@ class Corpus:
     instances: List[Instance] = field(default_factory=lambda: [])
 
 
-@dataclass
+@dataclass(frozen=True)
 class Span:
     span_type: SpanType
     left: int
@@ -37,9 +37,9 @@ class Slot:
 class Frame:
     def __init__(self, frame_type: FrameType) -> None:
         self.frame_type = frame_type
-        self.slots: Dict[str, Slot] = {}
+        self.slots: Dict[SlotType, Slot] = {}
         for slot_type in frame_type.slot_types:
-            self.slots[slot_type.name] = Slot(slot_type)
+            self.slots[slot_type] = Slot(slot_type)
 
 
 Filler = Union[Span, Frame]

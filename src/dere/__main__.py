@@ -5,6 +5,7 @@ import logging
 # path hackery to get imports working as intended
 import sys
 import os
+
 path = os.path.dirname(sys.modules[__name__].__file__)  # noqa
 path = os.path.join(path, "..")  # noqa
 sys.path.insert(0, path)  # noqa
@@ -47,9 +48,7 @@ def _build(model_name: str, spec_path: str, out_path: str) -> None:
 @click.option("--model", default="bare_model.pkl")
 @click.option("--outfile", default="trained_model.pkl")
 @click.option("--corpus-format", required=True)
-def train(
-    corpus_path: str, model: str, outfile: str, corpus_format: str
-) -> None:
+def train(corpus_path: str, model: str, outfile: str, corpus_format: str) -> None:
     _train(corpus_path, model, outfile, corpus_format)
 
 
@@ -76,9 +75,7 @@ def predict(corpus_path: str, model: str, corpus_format: str) -> None:
     _predict(corpus_path, model, corpus_format)
 
 
-def _predict(
-    corpus_path: str, model_path: str, corpus_format: str
-) -> None:
+def _predict(corpus_path: str, model_path: str, corpus_format: str) -> None:
     print("predicting with", corpus_path, model_path)
     with open(model_path, "rb") as f:
         model = pickle.load(f)
@@ -98,9 +95,7 @@ def evaluate(corpus_path: str, model: str, corpus_format: str) -> None:
     _evaluate(corpus_path, model, corpus_format)
 
 
-def _evaluate(
-    corpus_path: str, model_path: str, corpus_format: str
-) -> None:
+def _evaluate(corpus_path: str, model_path: str, corpus_format: str) -> None:
     print("evaluating with", corpus_path, model_path)
     with open(model_path, "rb") as f:
         model = pickle.load(f)

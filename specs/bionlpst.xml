@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE deREschema SYSTEM "dere.dtd">
+<!-- http://2011.bionlp-st.org/home/genia-event-extraction-genia -->
+<deREschema name="BioNLP-ST 2009" version="0.01" author="Roman Klinger">
+  <!--<uniontype name="Regulation" includes="Regulation,Positive Regulation,Negative Regulation"/>-->
+  <spans>
+    <span name="Gene_expression" predict="True"/>
+    <span name="Protein" predict="False"/>
+    <span name="Regulation" predict="True"/>
+    <span name="Positive_regulation" predict="True"/>
+    <span name="Negative_regulation" predict="True"/>
+    <span name="Binding" predict="True"/>
+    <span name="Transcription" predict="True"/>
+    <span name="Protein_catabolism" predict="True"/>
+    <span name="Phosphorylation" predict="True"/>
+    <span name="Localization" predict="True"/>
+  </spans>
+  <frames>
+    <frame name="Gene_expression">
+      <slot name="Gene_expression" types="span:Gene_expression" cardinality="1"/>
+      <slot name="Theme" types="Protein" cardinality="1"/>
+    </frame>
+    <frame name="Regulation">
+      <slot name="Regulation" types="span:Regulation" cardinality="1"/>
+      <slot name="Cause" types="Protein" mincardinality="0" maxcardinality="1"/>
+      <slot name="Theme" types="Protein,Regulation,Positive_regulation,Negative_regulation" mincardinality="1" maxcardinality="1"/>
+    </frame>
+    <frame name="Positive_regulation">
+      <slot name="Positive_regulation" types="span:Positive_regulation" cardinality="1"/>
+      <slot name="Cause" types="Protein" mincardinality="0" maxcardinality="1"/>
+      <slot name="Theme" types="Protein,Regulation,Positive_regulation,Negative_regulation" cardinality="1"/>
+    </frame>
+    <frame  name="Negative_regulation">
+      <slot name="Negative_regulation" types="span:Negative_regulation" cardinality="1"/>
+      <slot name="Cause" types="Protein" mincardinality="0" maxcardinality="1"/>
+      <slot name="Theme" types="Protein,Regulation,Positive_regulation,Negative_regulation" cardinality="1"/>
+    </frame>
+    <frame name="Binding">
+      <slot name="Binding" types="span:Binding" cardinality="1"/>
+      <slot name="Theme" types="Protein" mincardinality="0"/>
+    </frame>
+    <frame name="Transcription">
+      <slot name="Transcription" types="span:Transcription" cardinality="1"/>
+      <slot name="Theme" types="Protein" cardinality="1"/>
+    </frame>
+    <frame name="Protein_catabolism">
+      <slot name="Protein_catabolism" types="span:Protein_catabolism" cardinality="1"/>
+      <slot name="Theme" types="Protein" cardinality="1"/>
+    </frame>
+    <frame name="Phosphorylation">
+      <slot name="Phosphorylation" types="span:Phosphorylation" cardinality="1"/>
+      <slot name="Theme" types="Protein" cardinality="1"/>
+    </frame>
+    <frame name="Localization">
+      <slot name="Localization" types="span:Localization" cardinality="1"/>
+      <slot name="Theme" types="Protein" cardinality="1"/>
+    </frame>
+  </frames>
+</deREschema>

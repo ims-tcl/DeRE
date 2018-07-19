@@ -9,7 +9,4 @@ class Result:
 
     def __sub__(self, other: Result) -> Result:
         # this should work now in Python 3.7
-        return Result(
-          self.precision - other.precision,
-          self.recall - other.recall
-        )
+        return Result(self.precision - other.precision, self.recall - other.recall)
