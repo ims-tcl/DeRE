@@ -33,7 +33,9 @@ class SpanClassifier:
         self.target2classifier: Dict[str, CRF] = {}
         self.ps = PorterStemmer()
         # @Sean: TODO: read from spec which spans are given (if any)
+
         given_span_types = [spec.type_lookup("Protein")]
+        given_span_types = [gst for gst in given_span_types if gst is not None]
         for given_span_type in given_span_types:
             assert type(given_span_type) is SpanType
         self.given_span_types = cast(List[SpanType], given_span_types)

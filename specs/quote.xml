@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE deREschema SYSTEM "dere.dtd">
+<!-- http://2011.bionlp-st.org/home/genia-event-extraction-genia -->
+<deREschema name="Quoted Speech Attribution" version="0.01" author="Sean Papay">
+  <spans>
+    <span name="PERSON" predict="True"/>
+    <span name="QUOTE" predict="True"/>
+  </spans>
+  <frames>
+    <frame name="QUOTE">
+      <slot name="QUOTE" types="span:QUOTE" cardinality="1"/>
+      <slot name="speaker" types="PERSON" maxcardinality="1"/>
+      <slot name="addressee" types="PERSON" maxcardinality="1"/>
+    </frame>
+  </frames>
+</deREschema>

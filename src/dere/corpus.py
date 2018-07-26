@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import List, Union, Set, Dict
+from typing import List, Union, Set, Dict, Optional
 from dataclasses import dataclass, field
 
 from dere.taskspec import SpanType, FrameType, SlotType
@@ -40,6 +40,12 @@ class Frame:
         self.slots: Dict[SlotType, Slot] = {}
         for slot_type in frame_type.slot_types:
             self.slots[slot_type] = Slot(slot_type)
+
+    def slot_lookup(self, slot_name: str) -> Optional[Slot]:
+        for slot_type, slot in self.slots.items():
+            if slot_type.name == slot_name:
+                return slot
+        return None
 
 
 Filler = Union[Span, Frame]

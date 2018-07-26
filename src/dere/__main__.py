@@ -1,6 +1,7 @@
 import click
 import pickle
 import logging
+from typing import Optional
 
 # path hackery to get imports working as intended
 import sys
@@ -10,14 +11,14 @@ path = os.path.dirname(sys.modules[__name__].__file__)  # noqa
 path = os.path.join(path, "..")  # noqa
 sys.path.insert(0, path)  # noqa
 
-from dere.readers import CorpusReader, BRATCorpusReader, XML123CorpusReader
-from dere.models import BaselineModel, PGModel
+from dere.corpus_io import CorpusIO, BRATCorpusIO, CQSACorpusIO
+from dere.models import BaselineModel, PGModel, NOPModel
 import dere.taskspec
 
 
-CORPUS_READERS = {"BRAT": BRATCorpusReader, "XML123": XML123CorpusReader}
+CORPUS_IOS = {"BRAT": BRATCorpusIO, "CQSA": CQSACorpusIO}
 
-MODELS = {"baseline": BaselineModel, "pgm": PGModel}
+MODELS = {"baseline": BaselineModel, "pgm": PGModel, "nop": NOPModel}
 
 logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 
@@ -59,8 +60,8 @@ def _train(
     with open(model_path, "rb") as f:
         model = pickle.load(f)
 
-    corpus_reader = CORPUS_READERS[corpus_format](corpus_path, model.spec)
-    corpus = corpus_reader.load()
+    corpus_io = CORPUS_IOS[corpus_format](model.spec)
+    corpus = corpus_io.load(corpus_path)
 
     model.train(corpus)
     with open(out_path, "wb") as f:
@@ -71,20 +72,38 @@ def _train(
 @click.argument("corpus_path")
 @click.option("--model", default="trained_model.pkl")
 @click.option("--corpus-format", required=True)
-def predict(corpus_path: str, model: str, corpus_format: str) -> None:
-    _predict(corpus_path, model, corpus_format)
+@click.option("--output-format", required=False, default=None)
+@click.option("-o", required=True)
+def predict(
+    corpus_path: str,
+    model: str,
+    corpus_format: str,
+    output_format: Optional[str],
+    o: str,
+) -> None:
+    _predict(corpus_path, model, corpus_format, output_format, o)
 
 
-def _predict(corpus_path: str, model_path: str, corpus_format: str) -> None:
+def _predict(
+    corpus_path: str,
+    model_path: str,
+    corpus_format: str,
+    output_format: Optional[str],
+    output_path: str,
+) -> None:
     print("predicting with", corpus_path, model_path)
     with open(model_path, "rb") as f:
         model = pickle.load(f)
 
-    corpus_reader = CORPUS_READERS[corpus_format](corpus_path, model.spec)
-    corpus = corpus_reader.load()
+    input_corpus_io = CORPUS_IOS[corpus_format](model.spec)
+    if output_format is None:
+        output_format = corpus_format
+    output_corpus_io = CORPUS_IOS[output_format](model.spec)
 
-    predictions = model.predict(corpus)
-    print(predictions)  # or something smarter
+    corpus = input_corpus_io.load(corpus_path)
+
+    model.predict(corpus)
+    output_corpus_io.dump(corpus, output_path)
 
 
 @cli.command()
@@ -100,8 +119,8 @@ def _evaluate(corpus_path: str, model_path: str, corpus_format: str) -> None:
     with open(model_path, "rb") as f:
         model = pickle.load(f)
 
-    corpus_reader = CORPUS_READERS[corpus_format](corpus_path, model.spec)
-    corpus = corpus_reader.load()
+    corpus_io = CORPUS_IOS[corpus_format](model.spec)
+    corpus = corpus_io.load(corpus_path)
 
     predictions = model.predict(corpus)
     result = model.eval(corpus, predictions)

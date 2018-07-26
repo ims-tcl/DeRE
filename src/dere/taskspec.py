@@ -37,6 +37,22 @@ class TaskSpecification:
     span_types: Tuple[SpanType, ...]
     frame_types: Tuple[FrameType, ...]
 
+    def span_type_lookup(self, name: str) -> Optional[SpanType]:
+        if name.startswith("span:"):
+            name = name[5:]
+        for st in self.span_types:
+            if st.name == name:
+                return st
+        return None
+
+    def frame_type_lookup(self, name: str) -> Optional[FrameType]:
+        if name.startswith("span:"):
+            name = name[6:]
+        for ft in self.frame_types:
+            if ft.name == name:
+                return ft
+        return None
+
     def type_lookup(self, name: str) -> Optional[Union[SpanType, FrameType]]:
         span_possible = True
         frame_possible = True

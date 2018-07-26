@@ -1,36 +1,70 @@
 import os
 from itertools import product
-from typing import Optional, Dict, List, Sequence, cast
+from typing import Optional, Dict, List, Sequence, Union, Optional, cast
+import os.path
 
 
 from dere.corpus import Corpus, Instance
 from dere.corpus import Span, Frame, Filler
-from dere.readers import CorpusReader
+from dere.corpus_io import CorpusIO
 from dere.taskspec import SpanType, FrameType
 
 
-class BRATCorpusReader(CorpusReader):
-    def load(self) -> Corpus:
+class BRATCorpusIO(CorpusIO):
+    def load(self, path: str) -> Corpus:
         corpus = Corpus()
-        self._populate_corpus(corpus)
+        self._populate_corpus(corpus, path)
         return corpus
 
-    def _populate_corpus(self, corpus: Corpus) -> None:
+    # TODO: somehow take care of splitting into different documents
+    def dump(self, corpus: Corpus, path: str) -> None:
+        with open(path + ".txt", "w") as text_file, open(
+            path + ".ann", "w"
+        ) as annotation_file:
+            offset = 0
+            span_index = 1
+            frame_index = 1
+            indices: Dict[Union[Frame, Span], str] = {}
+            for instance in corpus.instances:
+                print(instance.text, file=text_file)
+                for span in instance.spans:
+                    print(
+                        "T%d\t%s %d %d\t%s"
+                        % (
+                            span_index,
+                            span.span_type.name,
+                            span.left + offset,
+                            span.right + offset,
+                            span.text,
+                        ),
+                        file=annotation_file,
+                    )
+                    indices[span] = "T%d" % span_index
+                    span_index += 1
+                for frame in instance.frames:
+                    indices[frame] = "E%d" % frame_index
+                    frame_index += 1
+                for frame in instance.frames:
+                    print(frame)
+                    s = indices[frame] + "\t"
+                    for slot_type, slot in frame.slots.items():
+                        for filler in slot.fillers:
+                            s += "%s:%s " % (slot_type.name, indices[filler])
+                    print(s[:-1], file=annotation_file)
+                offset += len(instance.text) + 1  # +1 for \n
+
+    def _populate_corpus(self, corpus: Corpus, path: str) -> None:
         doc_id_list = list(
-            {
-                fname[:-3]
-                for fname in os.listdir(self._corpus_path)
-                if fname.endswith(".a1")
-            }
+            {fname[:-3] for fname in os.listdir(path) if fname.endswith(".a1")}
         )
         for cur_id in doc_id_list:
-            annotation2filename = str(self._corpus_path / (cur_id + ".a2"))
+            annotation2filename = os.path.join(path, (cur_id + ".a2"))
             # extend is O(n) in length of second list, not in length of both
             self.read_data(
                 corpus=corpus,
-                textfilename=str(self._corpus_path / (cur_id + ".txt")),
+                textfilename=os.path.join(path, (cur_id + ".txt")),
                 doc_id=cur_id,
-                annotation1filename=str(self._corpus_path / (cur_id + ".a1")),
+                annotation1filename=os.path.join(path, (cur_id + ".a1")),
                 annotation2filename=annotation2filename,
             )
 
