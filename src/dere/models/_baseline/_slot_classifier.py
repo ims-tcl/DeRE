@@ -127,7 +127,8 @@ class SlotClassifier:
         return frame_type.slot_types[0]
 
     def get_features_and_labels(
-        self, corpus: Corpus
+        self,
+        corpus: Corpus,
     ) -> Tuple[scipy.sparse.spmatrix, np.ndarray]:
         labels: List[Any] = []
         span1_list: List[Span] = []
@@ -156,6 +157,7 @@ class SlotClassifier:
         # possibly give a list of all words in this
         # (list(iwl.values() for iwl in idx2word_list))
         self.logger.info("fitting count vectorizer")
+        # this is only for training
         self.fit_count_vectorizers(
             span1_list, span2_list, doc_list, graph_list, idx2word_list
         )
@@ -205,9 +207,7 @@ class SlotClassifier:
                     (
                         x,
                         y,
-                        arc
-                        if arc in self.plausible_relations[x.span_type, y.span_type]
-                        else "Nothing",
+                        arc if arc in self.plausible_relations[x.span_type, y.span_type] else "Nothing",
                     )
                 )
         return span_pairs

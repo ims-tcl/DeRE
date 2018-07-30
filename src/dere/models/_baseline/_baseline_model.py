@@ -18,7 +18,6 @@ class BaselineModel(Model):
     def train(self, corpus: Corpus) -> None:
         self._span_classifier.train(corpus)
         self._slot_classifier.train(corpus)
-        ...
 
     def predict(self, corpus: Corpus) -> None:
         self._span_classifier.predict(corpus)
