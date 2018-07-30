@@ -46,7 +46,7 @@ class TaskSpecification:
         return None
 
     def frame_type_lookup(self, name: str) -> Optional[FrameType]:
-        if name.startswith("span:"):
+        if name.startswith("frame:"):
             name = name[6:]
         for ft in self.frame_types:
             if ft.name == name:
