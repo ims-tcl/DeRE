@@ -73,15 +73,15 @@ def _train(
 @click.option("--model", default="trained_model.pkl")
 @click.option("--corpus-format", required=True)
 @click.option("--output-format", required=False, default=None)
-@click.option("-o", required=True)
+@click.option("--output", "-o", required=True)
 def predict(
     corpus_path: str,
     model: str,
     corpus_format: str,
     output_format: Optional[str],
-    o: str,
+    output: str,
 ) -> None:
-    _predict(corpus_path, model, corpus_format, output_format, o)
+    _predict(corpus_path, model, corpus_format, output_format, output)
 
 
 def _predict(
@@ -127,5 +127,4 @@ def _evaluate(corpus_path: str, model_path: str, corpus_format: str) -> None:
     print(result)  # or something smarter
 
 
-if __name__ == "__main__":
-    cli()
+cli()

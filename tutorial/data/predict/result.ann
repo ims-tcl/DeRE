@@ -1,0 +1,67 @@
+T1	Protein 37 51	p70(S6)-kinase
+T2	Protein 66 71	IL-10
+T3	Protein 108 112	gp41
+T4	Regulation 0 11	Involvement
+T5	Positive_regulation 52 62	activation
+T6	Positive_regulation 72 85	up-regulation
+E1	Regulation:T4 Cause:E3 Theme:E6
+E3	Positive_regulation:T5 Theme:T1
+E3	Positive_regulation:T5 Theme:T1
+E6	Positive_regulation:T6 Cause:T3 Theme:T2
+E6	Positive_regulation:T6 Cause:T3 Theme:T2
+E6	Positive_regulation:T6 Cause:T3 Theme:T2
+T7	Protein 215 219	gp41
+T8	Protein 306 320	interleukin-10
+T9	Protein 322 327	IL-10
+T10	Protein 456 460	gp41
+T11	Protein 469 474	IL-10
+T12	Protein 584 588	gp41
+T13	Protein 730 734	gp41
+T14	Protein 743 748	IL-10
+T15	Protein 787 791	gp41
+T16	Protein 916 921	IL-10
+T17	Protein 949 953	gp41
+T18	Protein 1135 1140	IL-10
+T19	Protein 1155 1159	gp41
+T20	Protein 1338 1342	gp41
+T21	Protein 1351 1356	IL-10
+T22	Positive_regulation 295 305	stimulates
+T23	Gene_expression 329 339	production
+T24	Positive_regulation 461 468	induced
+T25	Positive_regulation 475 488	up-regulation
+T26	Positive_regulation 492 500	mediated
+T27	Negative_regulation 719 729	suppressed
+T28	Positive_regulation 735 742	induced
+T29	Gene_expression 749 759	production
+T30	Binding 866 871	bound
+T31	Negative_regulation 1112 1121	prevented
+T32	Positive_regulation 1122 1131	induction
+T33	Gene_expression 1141 1151	production
+T34	Positive_regulation 1343 1350	induced
+T35	Positive_regulation 1357 1370	up-regulation
+T36	Positive_regulation 1459 1466	operate
+E7	Positive_regulation:T22 Theme:E9
+E9	Gene_expression:T23 Theme:T9
+E9	Gene_expression:T23 Theme:T9
+E11	Positive_regulation:T24 Cause:T10 Theme:E13
+E11	Positive_regulation:T24 Cause:T10 Theme:E13
+E13	Positive_regulation:T25 Theme:T11
+E13	Positive_regulation:T25 Theme:T11
+E14	Positive_regulation:T26 Theme:E11
+E15	Negative_regulation:T27 Theme:E17
+E17	Positive_regulation:T28 Cause:T13 Theme:E19
+E17	Positive_regulation:T28 Cause:T13 Theme:E19
+E19	Gene_expression:T29 Theme:T14
+E19	Gene_expression:T29 Theme:T14
+E21	Binding:T30 Theme:T16
+E21	Binding:T30 Theme:T16
+E22	Negative_regulation:T31 Theme:E24
+E24	Positive_regulation:T32 Cause:T19 Theme:E26
+E24	Positive_regulation:T32 Cause:T19 Theme:E26
+E26	Gene_expression:T33 Theme:T18
+E26	Gene_expression:T33 Theme:T18
+E28	Positive_regulation:T34 Cause:T20 Theme:E30
+E28	Positive_regulation:T34 Cause:T20 Theme:E30
+E30	Positive_regulation:T35 Theme:T21
+E30	Positive_regulation:T35 Theme:T21
+E31	Positive_regulation:T36 Theme:E28

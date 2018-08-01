@@ -5,8 +5,8 @@ from dere import Result
 
 import numpy as np
 
-from ._span_classifier import SpanClassifier
-from ._slot_classifier import SlotClassifier
+from .span_classifier import SpanClassifier
+from .slot_classifier import SlotClassifier
 
 
 class BaselineModel(Model):
