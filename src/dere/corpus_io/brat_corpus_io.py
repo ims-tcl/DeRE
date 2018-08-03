@@ -87,9 +87,8 @@ class BRATCorpusIO(CorpusIO):
             for line in f:
                 start_offset = end_offset
                 end_offset = start_offset + len(line)
-                instance = Instance(line)
+                instance = corpus.new_instance(line)
                 instances.append((start_offset, end_offset, instance))
-                corpus.instances.append(instance)
 
         # First pass -- construct our spans, and instantiate our frames
         spans = {}
@@ -108,16 +107,11 @@ class BRATCorpusIO(CorpusIO):
                             continue
                         for i_left, i_right, instance in instances:
                             if s_left >= i_left and s_right <= i_right:
-                                span = Span(
+                                span = instance.new_span(
                                     span_type,
                                     s_left - i_left,
                                     s_right - i_left,
-                                    span_string,
                                 )
-                                assert (
-                                    span_string == instance.text[span.left:span.right]
-                                )
-                                instance.spans.append(span)
                                 spans[tag] = span
                                 break
 
@@ -128,7 +122,7 @@ class BRATCorpusIO(CorpusIO):
                         if type(frame_type) is not FrameType:
                             continue
                         frame_type = cast(FrameType, frame_type)
-                        frames[tag] = Frame(frame_type)
+                        frames[tag] = Frame(frame_type, None)
 
         annotations: Dict[str, Filler] = {**spans, **frames}
 
@@ -148,10 +142,12 @@ class BRATCorpusIO(CorpusIO):
                                 frame.slots[slot_type].add(filler)
 
         # add frames to our instances
+        # messy surgery with the objects' internals :/
         for instance in corpus.instances:
-            instance.frames.extend(
-                frames_referencing_spans(list(frames.values()), instance.spans)
-            )
+            instance_frames = frames_referencing_spans(list(frames.values()), instance.spans)
+            for frame in instance_frames:
+                frame.instance = instance
+            instance.frames.extend(instance_frames)
 
 
 def frames_referencing_spans(
