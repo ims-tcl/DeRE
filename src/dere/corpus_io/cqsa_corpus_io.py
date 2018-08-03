@@ -31,7 +31,7 @@ class CQSACorpusIO(CorpusIO):
     def _populate_corpus_from_file(self, corpus: Corpus, path: str) -> None:
         tree = ET.parse(path)
         root = tree.getroot()
-        corpus.instances.append(self._construct_instance(root))
+        corpus.instances.append(self._construct_instance(corpus, root))
         """
         for child in root.getchildren():
             if child.tag in ["HEADING", "PARAGRAPH"]:
@@ -39,8 +39,8 @@ class CQSACorpusIO(CorpusIO):
                 corpus.instances.append(instance)
         """
 
-    def _construct_instance(self, element: ET.Element) -> Instance:
-        instance = Instance("")
+    def _construct_instance(self, corpus: Corpus, element: ET.Element) -> Instance:
+        instance = corpus.new_instance("")
         ids: Dict[str, Filler] = {}
         self._populate_instance(element, instance, ids)
         instance.text = instance.text.replace("\n", " ")
@@ -61,12 +61,12 @@ class CQSACorpusIO(CorpusIO):
             span = None
             span_type = self._spec.span_type_lookup(child.tag)
             if span_type is not None:
-                span = Span(span_type, left, right, instance.text[left:right])
+                span = instance.new_span(span_type, left, right)
                 instance.spans.append(span)
                 ids[child.attrib["id"]] = span
             frame_type = self._spec.frame_type_lookup(child.tag)
             if frame_type is not None:
-                frame = Frame(frame_type)
+                frame = instance.new_frame(frame_type)
                 if span is not None:
                     slot = frame.slot_lookup(frame_type.name)
                     if slot is not None:

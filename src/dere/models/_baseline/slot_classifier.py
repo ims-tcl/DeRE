@@ -5,7 +5,7 @@ import random
 
 from itertools import chain, combinations, product
 from operator import mul
-from typing import Optional, Dict, Tuple, List, Set, Any
+from typing import Optional, Dict, Tuple, List, Set, Any, Union
 
 import networkx as nx
 import numpy as np
@@ -23,10 +23,16 @@ from sklearn.externals import joblib
 from scipy.sparse import hstack, csr_matrix, spmatrix
 
 from dere import Result
-from dere.corpus import Corpus, Instance, Frame, Span, Filler
+from dere.corpus import Corpus, Instance, Frame, Span, Slot, Filler
 from dere.taskspec import TaskSpecification, FrameType, SpanType, SlotType
 
 nlp = spacy.load("en")
+
+SpanPair = Tuple[Span, Span]
+Edge = Tuple[FrameType, SlotType]
+Label = Union[str, Edge]
+Relation = Tuple[SpanPair, Any]
+Arc = Tuple[FrameType, SlotType]
 
 
 class SlotClassifier:
@@ -35,9 +41,7 @@ class SlotClassifier:
         self._spec = spec
         random.seed(98765)
         # Find our plausible relations from the spec
-        spanpair = Tuple[SpanType, SpanType]
-        edge = Tuple[FrameType, SlotType]
-        self.plausible_relations: Dict[spanpair, List[edge]] = {}
+        self.plausible_relations: Dict[Tuple[SpanType, SpanType], List[Edge]] = {}
         labels: Set[Any] = {"Nothing"}
         # For every span type that triggers a frame
         for frame_type in spec.frame_types:
@@ -61,7 +65,7 @@ class SlotClassifier:
         )
 
     def train(self, corpus: Corpus, dev_corpus: Optional[Corpus] = None) -> None:
-        x, y = self.get_features_and_labels(corpus, is_train=True)
+        x, y, _ = self.get_features_and_labels(corpus, is_train=True)
 
         if dev_corpus is None:
             self.cls = LinearSVC()
@@ -84,15 +88,82 @@ class SlotClassifier:
             self.cls = best_cls
 
     def predict(self, corpus: Corpus) -> None:
-        x, _ = self.get_features_and_labels(corpus)
+        x, _, span_pairs = self.get_features_and_labels(corpus)
         y_pred = self.cls.predict(x)
+        predicted_labels = [self.labels[pi] for pi in y_pred]
+        results_by_instance: List[List[Relation]] = []
+        for (anchor_span, filler_span), predicted_label in zip(span_pairs, predicted_labels):
+            instance = anchor_span.instance
+            for instance_results in results_by_instance:
+                if instance_results[0][0][0].instance == instance:
+                    instance_results.append(((anchor_span, filler_span), predicted_label))
+                    break
+            else:
+                results_by_instance.append([((anchor_span, filler_span), predicted_label)])
+        for instance_results in results_by_instance:
+            instance_results = self.filter_results(instance_results)
+            self.generate_frames(instance_results)
+
+    def filter_results(self, results: List[Relation]) -> List[Relation]:
+
+        def filt(relation: Relation) -> bool:
+            (anchor, filler), label = relation
+            if label == 'Nothing':
+                return True
+            type_pair = (anchor.span_type, filler.span_type)
+            return label in self.plausible_relations[type_pair]
+
+        return list(filter(filt, results))
+
+    def generate_frames(self, results: List[Relation]) -> None:
+        instance = results[0][0][0].instance
+        anchored_frames: Dict[Span, Frame] = {}
+        for (anchor, filler), relation in results:
+            if relation == 'Nothing':
+                continue
+            frame_type, slot_type = relation
+            if anchor in anchored_frames:
+                frame = anchored_frames[anchor]
+            else:
+                frame = instance.new_frame(frame_type)
+                anchor_slot = self.get_anchor_slot(frame)
+                anchor_slot.add(anchor)
+                anchored_frames[anchor] = frame
+            frame.slots[slot_type].add(filler)
+        self.duplicate_overfilled_frames(instance)
+
+    def duplicate_overfilled_frames(self, instance: Instance) -> None:
+        for frame in instance.frames:
+            frame.remove()
+            frame_type = frame.frame_type
+            # Each element of prod corresponds to a particular slot
+            # For each slot, we have a list of ways to fill that slot
+            # Each way to fill that slot is a list of (SlotType, Filler) pairs
+            prod: List[List[List[Tuple[SlotType, Filler]]]] = []
+            for slot_type, slot in frame.slots.items():
+                if slot_type.max_cardinality is None:
+                    prod.append([[(slot_type, filler) for filler in slot.fillers]])
+                else:
+                    n = min(slot_type.max_cardinality, len(slot.fillers))
+                    prod.append([[(slot_type, ci) for ci in c] for c in combinations(slot.fillers, n)])
+            for assignment in product(*prod):
+                new_frame = instance.new_frame(frame.frame_type)
+                for term in assignment:
+                    for slot_type, filler in term:
+                        new_frame.slots[slot_type].add(filler)
+                # check frame for min cardinality
+                for slot_type, slot in new_frame.slots.items():
+                    if slot_type.min_cardinality is not None:
+                        if len(slot.fillers) < slot_type.min_cardinality:
+                            new_frame.remove()
+                            break
 
     def evaluate(self, corpus: Corpus) -> float:
 
         """This function evaluates only the slot classifier, assuming
         the correct spans in gold"""
 
-        x, y_gold = self.get_features_and_labels(corpus)
+        x, y_gold, _ = self.get_features_and_labels(corpus)
         y_pred = self.cls.predict(x)
         prec, reca, f1, supp = precision_recall_fscore_support(
             y_gold,
@@ -123,9 +194,12 @@ class SlotClassifier:
     def _frame_type_anchor(self, frame_type: FrameType) -> SlotType:
         return frame_type.slot_types[0]
 
+    def get_anchor_slot(self, frame: Frame) -> Slot:
+        return frame.slots[self._frame_type_anchor(frame.frame_type)]
+
     def get_features_and_labels(
         self, corpus: Corpus, is_train: bool = False
-    ) -> Tuple[spmatrix, np.ndarray]:
+    ) -> Tuple[spmatrix, np.ndarray, List[SpanPair]]:
 
         labels: List[Any] = []
         span1_list: List[Span] = []
@@ -137,8 +211,8 @@ class SlotClassifier:
         prev_status = -1
         for i, instance in enumerate(corpus.instances):
             doc, graph, idx2word, edge2dep = self.preprocess_text(instance.text)
-            span_pairs = self.get_span_pairs(instance)
-            for span1, span2, relation in span_pairs:
+            relations = self.get_relations(instance)
+            for (span1, span2), relation in relations:
                 span1_list.append(span1)
                 span2_list.append(span2)
                 doc_list.append(doc)
@@ -178,13 +252,12 @@ class SlotClassifier:
 
         bincount_y = np.bincount(y)
         self.logger.debug("counts: " + str(bincount_y))
-        return x, y
+        return x, y, list(zip(span1_list, span2_list))
 
-    def get_span_pairs(self, instance: Instance) -> List[Tuple[Span, Span, Any]]:
-        arcs: Dict[Tuple[Span, Span], Tuple[FrameType, SlotType]] = {}
+    def get_relations(self, instance: Instance) -> List[Relation]:
+        arcs: Dict[SpanPair, Arc] = {}
         for frame in instance.frames:
-            anchor_type = self._frame_type_anchor(frame.frame_type)
-            anchor_slot = frame.slots[anchor_type]
+            anchor_slot = self.get_anchor_slot(frame)
             anchor_span = anchor_slot.fillers[0]
             if not isinstance(anchor_span, Span):
                 continue
@@ -210,8 +283,7 @@ class SlotClassifier:
                     )
                 span_pairs.append(
                     (
-                        x,
-                        y,
+                        (x, y),
                         arc
                         if arc in self.plausible_relations[x.span_type, y.span_type]
                         else "Nothing",
