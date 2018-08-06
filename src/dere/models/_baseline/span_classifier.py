@@ -350,17 +350,14 @@ class SpanClassifier:
             instance_tokens = word_tokenizer.span_tokenize(instance.text)
             for target_span_type in self.target_span_types:
                 instance_predictions = predictions[target_span_type.name][i]
-                current_span_left = None
+                current_span_left: Optional[int] = None
                 current_span_right = 0
                 for token, label in zip(instance_tokens, instance_predictions):
                     if current_span_left is not None and label in "BO":
-                        instance.spans.append(
-                            Span(
-                                target_span_type,
-                                current_span_left,
-                                current_span_right,
-                                instance.text[current_span_left:current_span_right],
-                            )
+                        instance.new_span(
+                            target_span_type,
+                            current_span_left,
+                            current_span_right,
                         )
                         current_span_left = None
                     if label == "B":

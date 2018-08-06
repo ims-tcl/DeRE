@@ -50,7 +50,7 @@ class Span:
         self.instance.spans.remove(self)
 
     @property
-    def text(self):
+    def text(self) -> str:
         return self.instance.text[self.left:self.right]
 
 
