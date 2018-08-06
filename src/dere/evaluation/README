@@ -1,0 +1,9 @@
+How to start the script:
+python -u deRE_evaluation.py --hypo PATH/output_directory_dere --gold PATH/data_bioNLP/dev_prepared
+
+Options:
+--hypo: [required] path to hypo files
+--gold: [required] path to gold files
+--soft-span: [optional] use soft matching (the same as -s -p flags in the perl script)
+--soft-overlap-span: [optional] use soft span matching: count a span as correct if it overlaps for at least one character with the gold span
+--verbose: [optional] print more log messages
