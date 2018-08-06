@@ -11,9 +11,9 @@ from dere.taskspec import SpanType, FrameType
 
 
 class BRATCorpusIO(CorpusIO):
-    def load(self, path: str) -> Corpus:
+    def load(self, path: str, load_gold: bool = True) -> Corpus:
         corpus = Corpus()
-        self._populate_corpus(corpus, path)
+        self._populate_corpus(corpus, path, load_gold)
         return corpus
 
     # TODO: somehow take care of splitting into different documents
@@ -53,13 +53,14 @@ class BRATCorpusIO(CorpusIO):
                     print(s[:-1], file=annotation_file)
                 offset += len(instance.text) + 1  # +1 for \n
 
-    def _populate_corpus(self, corpus: Corpus, path: str) -> None:
+    def _populate_corpus(self, corpus: Corpus, path: str, load_gold: bool) -> None:
         doc_id_list = list(
             {fname[:-3] for fname in os.listdir(path) if fname.endswith(".a1")}
         )
         for cur_id in doc_id_list:
-            annotation2filename = os.path.join(path, (cur_id + ".a2"))
-            # extend is O(n) in length of second list, not in length of both
+            annotation2filename: Optional[str] = None
+            if load_gold:
+                annotation2filename = os.path.join(path, (cur_id + ".a2"))
             self.read_data(
                 corpus=corpus,
                 textfilename=os.path.join(path, (cur_id + ".txt")),

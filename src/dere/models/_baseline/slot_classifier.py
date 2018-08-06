@@ -5,7 +5,7 @@ import random
 
 from itertools import chain, combinations, product
 from operator import mul
-from typing import Optional, Dict, Tuple, List, Set, Any, Union
+from typing import Optional, Dict, Tuple, List, Set, Any, Union, cast
 
 import networkx as nx
 import numpy as np
@@ -31,7 +31,7 @@ nlp = spacy.load("en")
 SpanPair = Tuple[Span, Span]
 Edge = Tuple[FrameType, SlotType]
 Label = Union[str, Edge]
-Relation = Tuple[SpanPair, Any]
+Relation = Tuple[SpanPair, Label]
 Arc = Tuple[FrameType, SlotType]
 
 
@@ -89,6 +89,10 @@ class SlotClassifier:
 
     def predict(self, corpus: Corpus) -> None:
         x, _, span_pairs = self.get_features_and_labels(corpus)
+        if x.shape[0] == 0:
+            # edge case -- we have no span pairs to classify
+            # so there's nothing for us to do
+            return
         y_pred = self.cls.predict(x)
         predicted_labels = [self.labels[pi] for pi in y_pred]
         results_by_instance: List[List[Relation]] = []
@@ -118,10 +122,11 @@ class SlotClassifier:
     def generate_frames(self, results: List[Relation]) -> None:
         instance = results[0][0][0].instance
         anchored_frames: Dict[Span, Frame] = {}
-        for (anchor, filler), relation in results:
-            if relation == 'Nothing':
+        for (anchor, filler), label in results:
+            if label == 'Nothing':
                 continue
-            frame_type, slot_type = relation
+            assert not isinstance(label, str)
+            frame_type, slot_type = label
             if anchor in anchored_frames:
                 frame = anchored_frames[anchor]
             else:
@@ -250,8 +255,8 @@ class SlotClassifier:
 
         y = np.array([self.labels.index(label) for label in labels])
 
-        bincount_y = np.bincount(y)
-        self.logger.debug("counts: " + str(bincount_y))
+        # bincount_y = np.bincount(y)
+        # self.logger.debug("counts: " + str(bincount_y))
         return x, y, list(zip(span1_list, span2_list))
 
     def get_relations(self, instance: Instance) -> List[Relation]:
@@ -269,7 +274,7 @@ class SlotClassifier:
         span_pairs = []
         for x, y in product(instance.spans, instance.spans):
             if (x.span_type, y.span_type) in self.plausible_relations:
-                arc = arcs.get((x, y))
+                arc = cast(Label, arcs.get((x, y)))
                 if arc is not None:
                     self.logger.debug("found relation: " + str(arc))
                     self.logger.debug(

@@ -61,7 +61,7 @@ def _train(
         model = pickle.load(f)
 
     corpus_io = CORPUS_IOS[corpus_format](model.spec)
-    corpus = corpus_io.load(corpus_path)
+    corpus = corpus_io.load(corpus_path, True)
 
     model.train(corpus)
     with open(out_path, "wb") as f:
@@ -100,7 +100,7 @@ def _predict(
         output_format = corpus_format
     output_corpus_io = CORPUS_IOS[output_format](model.spec)
 
-    corpus = input_corpus_io.load(corpus_path)
+    corpus = input_corpus_io.load(corpus_path, False)
 
     model.predict(corpus)
     output_corpus_io.dump(corpus, output_path)
@@ -120,10 +120,11 @@ def _evaluate(corpus_path: str, model_path: str, corpus_format: str) -> None:
         model = pickle.load(f)
 
     corpus_io = CORPUS_IOS[corpus_format](model.spec)
-    corpus = corpus_io.load(corpus_path)
+    predictions = corpus_io.load(corpus_path, False)
+    gold = corpus_io.load(corpus_path, True)
 
-    predictions = model.predict(corpus)
-    result = model.eval(corpus, predictions)
+    model.predict(predictions)
+    result = model.eval(gold, predictions)
     print(result)  # or something smarter
 
 

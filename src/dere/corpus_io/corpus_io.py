@@ -11,7 +11,7 @@ class CorpusIO:
         self._spec = spec
         self._logger = logging.getLogger(__name__)
 
-    def load(self, path: str) -> Corpus:
+    def load(self, path: str, load_gold: bool = True) -> Corpus:
         ...
 
     def dump(self, corpus: Corpus, path: str) -> None:

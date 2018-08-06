@@ -10,7 +10,7 @@ from dere.taskspec import TaskSpecification, SpanType
 
 
 class CQSACorpusIO(CorpusIO):
-    def load(self, path: str) -> Corpus:
+    def load(self, path: str, load_gold: bool = True) -> Corpus:
         if os.path.isdir(path):
             paths: List[str] = []
             for dirpath, dirnames, filenames in os.walk(path):
