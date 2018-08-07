@@ -93,7 +93,22 @@ def test_get_shortest_path(graph, tokens1, tokens2, result):
             {0: "foo", 1: "bar", 2: "bat", 3: "bla", 4: "blubb", 5: "boo"},
             ["foo", "bla"],
         ),
-        # (interesting_graph, MockToken.words("small cat", idx=1), MockToken.words("the big", idx=5), 5),
+        (
+            interesting_graph,
+            MockToken.words("small cat", idx=1),
+            MockToken.words("the big", idx=5),
+            {
+                0: "the",
+                1: "small",
+                2: "cat",
+                3: "is",
+                4: "on",
+                5: "the",
+                6: "big",
+                7: "table",
+            },
+            ["cat", "is", "on", "table", "the"]
+        ),
     ],
 )
 def test_edge_words(graph, tokens1, tokens2, idx2word, result):

@@ -42,6 +42,8 @@ class Span:
         right: int,
         instance: Instance
     ) -> None:
+        if left > right:
+            raise ValueError("Can't create Span: left can't be bigger than right")
         self.span_type = span_type
         self.left = left
         self.right = right
