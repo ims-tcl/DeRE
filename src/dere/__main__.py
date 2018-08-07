@@ -12,13 +12,14 @@ path = os.path.join(path, "..")  # noqa
 sys.path.insert(0, path)  # noqa
 
 from dere.corpus_io import CorpusIO, BRATCorpusIO, CQSACorpusIO
-from dere.models import BaselineModel, PGModel, NOPModel
+from dere.models import BaselineModel, NOPModel
+from dere.corpus import Corpus
 import dere.taskspec
 
 
 CORPUS_IOS = {"BRAT": BRATCorpusIO, "CQSA": CQSACorpusIO}
 
-MODELS = {"baseline": BaselineModel, "pgm": PGModel, "nop": NOPModel}
+MODELS = {"baseline": BaselineModel, "nop": NOPModel}
 
 logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 
@@ -50,14 +51,16 @@ def _build(model_name: str, spec_path: str, out_path: str) -> None:
 @click.option("--outfile", default="trained_model.pkl")
 @click.option("--corpus-format", required=True)
 @click.option("--dev-corpus", required=False)
+@click.option("--corpus-split", required=False)
 def train(
     corpus_path: str,
     model: str,
     outfile: str,
     corpus_format: str,
     dev_corpus: Optional[str],
+    corpus_split: Optional[str],
 ) -> None:
-    _train(corpus_path, model, outfile, corpus_format, dev_corpus)
+    _train(corpus_path, model, outfile, corpus_format, dev_corpus, corpus_split)
 
 
 def _train(
@@ -65,7 +68,8 @@ def _train(
     model_path: str,
     out_path: str,
     corpus_format: str,
-    dev_corpus: Optional[str],
+    dev_corpus_path: Optional[str],
+    corpus_split: Optional[str],
 ) -> None:
     print("training with", corpus_path, model_path, out_path)
     with open(model_path, "rb") as f:
@@ -74,9 +78,12 @@ def _train(
     corpus_io = CORPUS_IOS[corpus_format](model.spec)
     corpus = corpus_io.load(corpus_path, load_gold=True)
 
-    if dev_corpus is not None:
-        print(dev_corpus)
-        dev_corpus = corpus_io.load(dev_corpus, load_gold=True)
+    dev_corpus: Optional[Corpus] = None
+    if dev_corpus_path is not None:
+        dev_corpus = corpus_io.load(dev_corpus_path, load_gold=True)
+    elif corpus_split is not None:
+        ratio = float(corpus_split)
+        corpus, dev_corpus = corpus.split(ratio)
 
     model.train(corpus, dev_corpus)
     with open(out_path, "wb") as f:

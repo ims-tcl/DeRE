@@ -440,7 +440,7 @@ class SlotClassifier:
         graph_list: List[nx.Graph],
         idx2word_list: List[Dict[int, str]],
         edge2dep_list: List[Dict[Tuple[int, int], str]],
-        sequence_words_list,
+        sequence_words_list: List[str],
     ) -> spmatrix:
         # spacy words
 
@@ -613,8 +613,7 @@ class SlotClassifier:
                     continue
         return shortest  # type: ignore
 
-
-    def build_sequence(self, doc, span1, span2):
+    def build_sequence(self, doc: Doc, span1: Span, span2: Span) -> str:
         tokens1 = self.find_node(doc, span1)
         tokens2 = self.find_node(doc, span2)
 
@@ -634,4 +633,5 @@ class SlotClassifier:
             n = min2 - 1
 
         tokens = doc[m:n]  # may be empty
+        assert isinstance(tokens, list)
         return " ".join(t.text for t in tokens)

@@ -1,6 +1,6 @@
 import os
 from itertools import product
-from typing import Optional, Dict, List, Sequence, Union, Optional, cast
+from typing import Optional, Dict, List, Sequence, Union, Optional, Set, cast
 import os.path
 
 
@@ -165,7 +165,7 @@ class BRATCorpusIO(CorpusIO):
 def frames_referencing_spans(
     frames: List[Frame], target_spans: List[Span]
 ) -> List[Frame]:
-    connected_frames: List[Frame] = []
+    connected_frames: Set[Frame] = set()
     updated = True
     while updated:
         updated = False
@@ -179,6 +179,6 @@ def frames_referencing_spans(
             for slot in frame.slots.values():
                 for filler in slot.fillers:
                     if filler in target:
-                        connected_frames.append(frame)
+                        connected_frames.add(frame)
                         updated = True
     return list(connected_frames)

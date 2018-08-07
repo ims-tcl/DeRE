@@ -1,6 +1,7 @@
 from __future__ import annotations
-from typing import List, Union, Set, Dict, Optional
+from typing import List, Union, Set, Dict, Optional, Tuple
 from dataclasses import dataclass, field
+import random
 
 from dere.taskspec import SpanType, FrameType, SlotType
 
@@ -32,6 +33,34 @@ class Corpus:
         instance = Instance(text, document_id, self)
         self.instances.append(instance)
         return instance
+
+    def split(self, ratio: float) -> Tuple[Corpus, Corpus]:
+        left = Corpus()
+        right = Corpus()
+        for instance in self.instances:
+            if random.random() < ratio:
+                corpus2 = left
+            else:
+                corpus2 = right
+            instance2 = corpus2.new_instance(instance.text, instance.document_id)
+            bijection: Dict[Filler, Filler] = {}
+            for span in instance.spans:
+                span2 = instance2.new_span(span.span_type, span.left, span.right)
+                bijection[span] = span2
+            for frame in instance.frames:
+                frame2 = instance2.new_frame(frame.frame_type)
+                bijection[frame] = frame2
+            for frame in instance.frames:
+                frame2 = bijection[frame]
+                for slot_type, slot in frame.slots.items():
+                    slot2 = frame2.slots[slot_type]
+                    for filler in slot.fillers:
+                        slot2.add(bijection[filler])
+        return left, right
+
+    # is this elegant or a horrible hack?  You be the judge.
+    def clone(self):
+        return self.split(1.0)[0]
 
 
 class Span:

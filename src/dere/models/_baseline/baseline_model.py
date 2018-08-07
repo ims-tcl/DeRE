@@ -17,7 +17,7 @@ class BaselineModel(Model):
         self._span_classifier = SpanClassifier(spec)
         self._slot_classifier = SlotClassifier(spec)
 
-    def train(self, corpus: Corpus, dev_corpus: Optional[Corpus]) -> None:
+    def train(self, corpus: Corpus, dev_corpus: Optional[Corpus] = None) -> None:
         self._span_classifier.train(corpus, dev_corpus=dev_corpus)
         self._slot_classifier.train(corpus, dev_corpus=dev_corpus)
 

@@ -138,11 +138,14 @@ class SpanClassifier:
         self, classifier: CRF, X_dev: List[List[Features]], y_dev: List[List[str]]
     ) -> float:
         y_pred = classifier.predict(X_dev)
-        self.logger.info(
-            metrics.flat_classification_report(
-                y_dev, y_pred, labels=["I", "B"], digits=3
+        try:
+            self.logger.info(
+                metrics.flat_classification_report(
+                    y_dev, y_pred, labels=["I", "B"], digits=3
+                )
             )
-        )
+        except ZeroDivisionError:
+            pass
         micro_f1 = metrics.flat_f1_score(
             y_dev, y_pred, average="micro", labels=["I", "B"]
         )

@@ -1,4 +1,4 @@
-from typing import Iterator, Any
+from typing import Iterator, Any, Union, List
 
 from spacy.vocab import Vocab
 
@@ -71,4 +71,7 @@ class Token:
 
 class Doc:
     def __iter__(self) -> Iterator[Token]:
+        ...
+
+    def __getitem__(self, i: Union[int, slice]) -> Union[Token, List[Token]]:
         ...
