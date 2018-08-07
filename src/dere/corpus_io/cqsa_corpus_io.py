@@ -29,9 +29,10 @@ class CQSACorpusIO(CorpusIO):
         return corpus
 
     def _populate_corpus_from_file(self, corpus: Corpus, path: str) -> None:
+        doc_id, _ = path.rsplit(".", 1)
         tree = ET.parse(path)
         root = tree.getroot()
-        corpus.instances.append(self._construct_instance(corpus, root))
+        corpus.instances.append(self._construct_instance(corpus, root, doc_id))
         """
         for child in root.getchildren():
             if child.tag in ["HEADING", "PARAGRAPH"]:
@@ -39,8 +40,8 @@ class CQSACorpusIO(CorpusIO):
                 corpus.instances.append(instance)
         """
 
-    def _construct_instance(self, corpus: Corpus, element: ET.Element) -> Instance:
-        instance = corpus.new_instance("")
+    def _construct_instance(self, corpus: Corpus, element: ET.Element, doc_id: str) -> Instance:
+        instance = corpus.new_instance("", doc_id)
         ids: Dict[str, Filler] = {}
         self._populate_instance(element, instance, ids)
         instance.text = instance.text.replace("\n", " ")

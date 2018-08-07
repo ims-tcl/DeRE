@@ -18,40 +18,51 @@ class BRATCorpusIO(CorpusIO):
 
     # TODO: somehow take care of splitting into different documents
     def dump(self, corpus: Corpus, path: str) -> None:
-        with open(path + ".txt", "w") as text_file, open(
-            path + ".ann", "w"
-        ) as annotation_file:
+        # first, delete any old output that might live in our directory
+        # scary: we are deleting a bunch of files here
+        instances_by_doc_id: Dict[str, List[Instance]] = {}
+        for instance in corpus.instances:
+            if instance.document_id not in instances_by_doc_id:
+                instances_by_doc_id[instance.document_id] = []
+            instances_by_doc_id[instance.document_id].append(instance)
+        # now start writing our new annotations
+        for doc_id, instances in instances_by_doc_id.items():
             offset = 0
             span_index = 1
             frame_index = 1
             indices: Dict[Union[Frame, Span], str] = {}
-            for instance in corpus.instances:
-                print(instance.text, file=text_file)
-                for span in instance.spans:
-                    print(
-                        "T%d\t%s %d %d\t%s"
-                        % (
-                            span_index,
-                            span.span_type.name,
-                            span.left + offset,
-                            span.right + offset,
-                            span.text,
-                        ),
-                        file=annotation_file,
-                    )
-                    indices[span] = "T%d" % span_index
-                    span_index += 1
-                for frame in instance.frames:
-                    indices[frame] = "E%d" % frame_index
-                    frame_index += 1
-                for frame in instance.frames:
-                    print(frame)
-                    s = indices[frame] + "\t"
-                    for slot_type, slot in frame.slots.items():
-                        for filler in slot.fillers:
-                            s += "%s:%s " % (slot_type.name, indices[filler])
-                    print(s[:-1], file=annotation_file)
-                offset += len(instance.text) + 1  # +1 for \n
+            text_path = os.path.join(path, doc_id + ".txt")
+            annotation_path = os.path.join(path, doc_id + ".ann")
+            with open(text_path, "w") as text_file, open(annotation_path, "w") as annotation_file:
+                for instance in instances:
+                    text_path = os.path.join(path, instance.document_id + ".txt")
+                    annotation_path = os.path.join(path, instance.document_id + ".ann")
+                    print(instance.text, file=text_file, end="")
+                    for span in instance.spans:
+                        print(
+                            "T%d\t%s %d %d\t%s"
+                            % (
+                                span_index,
+                                span.span_type.name,
+                                span.left + offset,
+                                span.right + offset,
+                                span.text,
+                            ),
+                            file=annotation_file,
+                        )
+                        indices[span] = "T%d" % span_index
+                        span_index += 1
+                    for frame in instance.frames:
+                        indices[frame] = "E%d" % frame_index
+                        frame_index += 1
+                    for frame in instance.frames:
+                        print(frame)
+                        s = indices[frame] + "\t"
+                        for slot_type, slot in frame.slots.items():
+                            for filler in slot.fillers:
+                                s += "%s:%s " % (slot_type.name, indices[filler])
+                        print(s[:-1], file=annotation_file)
+                    offset += len(instance.text)
 
     def _populate_corpus(self, corpus: Corpus, path: str, load_gold: bool) -> None:
         doc_id_list = list(
@@ -88,7 +99,7 @@ class BRATCorpusIO(CorpusIO):
             for line in f:
                 start_offset = end_offset
                 end_offset = start_offset + len(line)
-                instance = corpus.new_instance(line)
+                instance = corpus.new_instance(line, doc_id)
                 instances.append((start_offset, end_offset, instance))
 
         # First pass -- construct our spans, and instantiate our frames
