@@ -6,8 +6,9 @@ from dere.taskspec import SpanType, FrameType, SlotType
 
 
 class Instance:
-    def __init__(self, text: str, corpus: Corpus) -> None:
+    def __init__(self, text: str, document_id: str, corpus: Corpus) -> None:
         self.text = text
+        self.document_id = document_id
         self.corpus = corpus
         self.spans: List[Span] = []
         self.frames: List[Frame] = []
@@ -27,8 +28,8 @@ class Corpus:
     def __init__(self) -> None:
         self.instances: List[Instance] = []
 
-    def new_instance(self, text: str) -> Instance:
-        instance = Instance(text, self)
+    def new_instance(self, text: str, document_id: str) -> Instance:
+        instance = Instance(text, document_id, self)
         self.instances.append(instance)
         return instance
 

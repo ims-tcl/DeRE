@@ -121,7 +121,7 @@ def read_a2_file(
                 ]
                 danglingp = 0
                 for e_a in e_aid:
-                    if not e_a in added:
+                    if e_a not in added:
                         danglingp = 1
                         break
                 if danglingp == 0:
@@ -178,14 +178,14 @@ def read_a2_file(
     num_event = {}
     for e_id in e_list:
         cur_type = frame_annotations[e_id][0]
-        if not cur_type in num_event:
+        if cur_type not in num_event:
             num_event[cur_type] = 0
         num_event[cur_type] += 1
 
     num_span = {}
     for span in span_list:
         cur_type = span[1]
-        if not cur_type in num_span:
+        if cur_type not in num_span:
             num_span[cur_type] = 0
         num_span[cur_type] += 1
 
@@ -245,7 +245,7 @@ def report(
     )
 
 
-### METHODS FOR CHECKING EQUALITY OF SPANS AND EVENTS ###
+# METHODS FOR CHECKING EQUALITY OF SPANS AND EVENTS
 
 
 def eq_event(
@@ -498,7 +498,7 @@ def expand_span(
     ebeg = beg - 2
     while (
         (ebeg >= 0)
-        and (text[ebeg : ebeg + 1] not in [" ", ".", "!", "?", ",", "'", '"'])
+        and (text[ebeg: ebeg + 1] not in [" ", ".", "!", "?", ",", "'", '"'])
         and (ebeg not in events_in_text or events_in_text[ebeg] != "E")
     ):
         ebeg -= 1
@@ -507,7 +507,7 @@ def expand_span(
     eend = end + 2
     while (
         (eend <= text_len)
-        and (text[eend - 1 : eend] not in [" ", ".", "!", "?", ",", "'", '"'])
+        and (text[eend - 1: eend] not in [" ", ".", "!", "?", ",", "'", '"'])
         and (eend - 1 not in events_in_text or events_in_text[eend - 1] != "E")
     ):
         eend += 1
@@ -681,9 +681,9 @@ def count_match(
                 do_soft_span,
                 do_soft_overlap_span,
             ):
-                if not aid in cnt_manswer:
+                if aid not in cnt_manswer:
                     cnt_manswer[aid] = 0
-                if not gid in cnt_matched_gold:
+                if gid not in cnt_matched_gold:
                     cnt_matched_gold[gid] = 0
                 cnt_manswer[aid] += 1
                 cnt_matched_gold[gid] += 1
@@ -692,14 +692,14 @@ def count_match(
     for a in answer:
         if cnt_manswer[a] > 0:
             a_class = answers_frame[a][0]
-            if not a_class in num_matched_answer:
+            if a_class not in num_matched_answer:
                 num_matched_answer[a_class] = 0
             num_matched_answer[a_class] += 1
 
     for g in gold:
         if cnt_matched_gold[g] > 0:
             g_class = golds_frame[g][0]
-            if not g_class in num_matched_gold:
+            if g_class not in num_matched_gold:
                 num_matched_gold[g_class] = 0
             num_matched_gold[g_class] += 1
 
@@ -750,9 +750,9 @@ def count_match_span(
                 do_soft_span,
                 do_soft_overlap_span,
             ):
-                if not aid in cnt_manswer:
+                if aid not in cnt_manswer:
                     cnt_manswer[aid] = 0
-                if not gid in cnt_matched_gold:
+                if gid not in cnt_matched_gold:
                     cnt_matched_gold[gid] = 0
                 cnt_manswer[aid] += 1
                 cnt_matched_gold[gid] += 1
@@ -761,21 +761,21 @@ def count_match_span(
     for a in answer:
         if cnt_manswer[a] > 0:
             a_class = answers[a][0]
-            if not a_class in num_matched_answer_span:
+            if a_class not in num_matched_answer_span:
                 num_matched_answer_span[a_class] = 0
             num_matched_answer_span[a_class] += 1
 
     for g in gold:
         if cnt_matched_gold[g] > 0:
             g_class = golds[g][0]
-            if not g_class in num_matched_gold_span:
+            if g_class not in num_matched_gold_span:
                 num_matched_gold_span[g_class] = 0
             num_matched_gold_span[g_class] += 1
 
     return num_matched_answer_span, num_matched_gold_span
 
 
-######### MAIN ######################
+# MAIN
 
 
 @click.group()
@@ -846,14 +846,23 @@ def deRE_evaluation(
         a1_annotations, events_in_text = read_a1_file(gold_dir + "/" + pmid + ".a1")
 
         # read gold annotations
-        gold_span_annotations, gold_frame_annotations, num_gold, num_gold_span, events_in_text, equiv = read_a2_file(
-            gold_dir + "/" + pmid + ".a2.t1", events_in_text, equiv, "G"
-        )
+        (
+            gold_span_annotations,
+            gold_frame_annotations,
+            num_gold, num_gold_span,
+            events_in_text,
+            equiv
+        ) = read_a2_file(gold_dir + "/" + pmid + ".a2.t1", events_in_text, equiv, "G")
 
         # read answers from system
-        answer_span_predictions, answer_frame_predictions, num_answer, num_answer_span, events_in_text, equiv = read_a2_file(
-            f_dir + "/" + f_base, events_in_text, equiv, "A"
-        )
+        (
+            answer_span_predictions,
+            answer_frame_predictions,
+            num_answer,
+            num_answer_span,
+            events_in_text,
+            equiv
+        ) = read_a2_file(f_dir + "/" + f_base, events_in_text, equiv, "A")
 
         # get number of matched spans
         num_matched_answer_span, num_matched_gold_span = count_match_span(
@@ -869,9 +878,9 @@ def deRE_evaluation(
 
         # adjustment for duplication
         for cl in target_class:
-            if not cl in num_matched_answer_span:
+            if cl not in num_matched_answer_span:
                 num_matched_answer_span[cl] = 0
-            if not cl in num_matched_gold_span:
+            if cl not in num_matched_gold_span:
                 num_matched_gold_span[cl] = 0
             if num_matched_answer_span[cl] > num_matched_gold_span[cl]:
                 num_danswer = num_matched_answer_span[cl] - num_matched_gold_span[cl]
@@ -902,9 +911,9 @@ def deRE_evaluation(
 
         # adjustment for duplication
         for cl in target_class:
-            if not cl in num_matched_answer:
+            if cl not in num_matched_answer:
                 num_matched_answer[cl] = 0
-            if not cl in num_matched_gold:
+            if cl not in num_matched_gold:
                 num_matched_gold[cl] = 0
             if num_matched_answer[cl] > num_matched_gold[cl]:
                 num_danswer = num_matched_answer[cl] - num_matched_gold[cl]
@@ -919,7 +928,7 @@ def deRE_evaluation(
                 tnum_gold[cl] += num_gold[cl]
                 tnum_matched_gold[cl] += num_matched_gold[cl]
 
-    ### CALCULATE AND OUTPUT RESULTS #############
+    # CALCULATE AND OUTPUT RESULTS
 
     report_headline()
 

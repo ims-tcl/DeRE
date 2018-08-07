@@ -18,14 +18,24 @@ class BRATCorpusIO(CorpusIO):
 
     # TODO: somehow take care of splitting into different documents
     def dump(self, corpus: Corpus, path: str) -> None:
-        with open(path + ".txt", "w") as text_file, open(
-            path + ".ann", "w"
-        ) as annotation_file:
-            offset = 0
-            span_index = 1
-            frame_index = 1
-            indices: Dict[Union[Frame, Span], str] = {}
-            for instance in corpus.instances:
+        offset = 0
+        span_index = 1
+        frame_index = 1
+        indices: Dict[Union[Frame, Span], str] = {}
+        # first, delete any old output that might live in our directory
+        # scary: we are deleting a bunch of files here
+        for instance in corpus.instances:
+            text_path = os.path.join(path, instance.document_id + ".txt")
+            annotation_path = os.path.join(path, instance.document_id + ".ann")
+            if os.path.isfile(text_path):
+                os.remove(text_path)
+            if os.path.isfile(annotation_path):
+                os.remove(annotation_path)
+        # now start writing our new annotations
+        for instance in corpus.instances:
+            text_path = os.path.join(path, instance.document_id + ".txt")
+            annotation_path = os.path.join(path, instance.document_id + ".ann")
+            with open(text_path, "a+") as text_file, open(annotation_path, "a+") as annotation_file:
                 print(instance.text, file=text_file)
                 for span in instance.spans:
                     print(
@@ -88,7 +98,7 @@ class BRATCorpusIO(CorpusIO):
             for line in f:
                 start_offset = end_offset
                 end_offset = start_offset + len(line)
-                instance = corpus.new_instance(line)
+                instance = corpus.new_instance(line, doc_id)
                 instances.append((start_offset, end_offset, instance))
 
         # First pass -- construct our spans, and instantiate our frames
