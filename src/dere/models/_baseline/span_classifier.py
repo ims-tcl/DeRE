@@ -1,4 +1,5 @@
 # Author: Heike, Sean
+
 import copy
 import logging
 import string
@@ -44,14 +45,18 @@ class SpanClassifier:
                 self.target_span_types.remove(t)
         # initialize everything necessary
 
-    def train(self, corpus_train: Corpus, corpus_dev: Optional[Corpus] = None) -> None:
+    def train(
+        self,
+        corpus_train: Corpus,
+        dev_corpus: Optional[Corpus] = None,
+    ) -> None:
         self.logger.info("extracting features")
         X_train = self.get_features(corpus_train)
 
         self.logger.info("using " + str(len(X_train)) + " sentences for training")
 
-        if corpus_dev is not None:
-            X_dev = self.get_features(corpus_dev)
+        if dev_corpus is not None:
+            X_dev = self.get_features(dev_corpus)
 
         self.logger.info(
             "target span types: " + str([st.name for st in self.target_span_types])
@@ -64,7 +69,7 @@ class SpanClassifier:
             self.logger.info("Optimizing classifier for class " + str(t))
             target_t = self.get_binary_labels(corpus_train, t, use_bio=True)
             self.logger.debug(target_t)
-            if corpus_dev is None:
+            if dev_corpus is None:
                 aps = True
                 c2v = 0.1
                 default_setup = {"aps": aps, "c2v": c2v}
@@ -81,9 +86,9 @@ class SpanClassifier:
                 self.target2classifier[t.name] = crf
             else:
                 # get features for dev corpus
-                X_dev2 = self.get_span_type_specific_features(corpus_dev, t)
+                X_dev2 = self.get_span_type_specific_features(dev_corpus, t)
                 X_dev_merged = self.merge_features(X_dev, X_dev2)
-                y_dev = self.get_binary_labels(corpus_dev, t, use_bio=True)
+                y_dev = self.get_binary_labels(dev_corpus, t, use_bio=True)
                 # optimize on dev
                 best_f1 = -1.0
                 Setup = TypedDict("Setup", {"aps": bool, "c2v": float})

@@ -49,21 +49,36 @@ def _build(model_name: str, spec_path: str, out_path: str) -> None:
 @click.option("--model", default="bare_model.pkl")
 @click.option("--outfile", default="trained_model.pkl")
 @click.option("--corpus-format", required=True)
-def train(corpus_path: str, model: str, outfile: str, corpus_format: str) -> None:
-    _train(corpus_path, model, outfile, corpus_format)
+@click.option("--dev-corpus", required=False)
+def train(
+    corpus_path: str,
+    model: str,
+    outfile: str,
+    corpus_format: str,
+    dev_corpus: Optional[str],
+) -> None:
+    _train(corpus_path, model, outfile, corpus_format, dev_corpus)
 
 
 def _train(
-    corpus_path: str, model_path: str, out_path: str, corpus_format: str
+    corpus_path: str,
+    model_path: str,
+    out_path: str,
+    corpus_format: str,
+    dev_corpus: Optional[str],
 ) -> None:
     print("training with", corpus_path, model_path, out_path)
     with open(model_path, "rb") as f:
         model = pickle.load(f)
 
     corpus_io = CORPUS_IOS[corpus_format](model.spec)
-    corpus = corpus_io.load(corpus_path, True)
+    corpus = corpus_io.load(corpus_path, load_gold=True)
 
-    model.train(corpus)
+    if dev_corpus is not None:
+        print(dev_corpus)
+        dev_corpus = corpus_io.load(dev_corpus, load_gold=True)
+
+    model.train(corpus, dev_corpus)
     with open(out_path, "wb") as f:
         pickle.dump(model, f)
 

@@ -1,3 +1,5 @@
+from typing import Optional
+
 from dere.corpus import Corpus
 from dere.taskspec import TaskSpecification
 from dere import Result
@@ -8,7 +10,7 @@ class Model:
         self.spec = spec
 
     # only minimal logic here, things that all models (might) need
-    def train(self, corpus: Corpus) -> None:
+    def train(self, corpus: Corpus, dev_corpus:Optional[Corpus]=None) -> None:
         ...
 
     def predict(self, corpus: Corpus) -> None:

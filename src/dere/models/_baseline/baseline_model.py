@@ -1,3 +1,5 @@
+from typing import Optional
+
 from dere.corpus import Corpus
 from dere.models import Model
 from dere.taskspec import TaskSpecification
@@ -15,9 +17,9 @@ class BaselineModel(Model):
         self._span_classifier = SpanClassifier(spec)
         self._slot_classifier = SlotClassifier(spec)
 
-    def train(self, corpus: Corpus) -> None:
-        self._span_classifier.train(corpus)
-        self._slot_classifier.train(corpus)
+    def train(self, corpus: Corpus, dev_corpus: Optional[Corpus]) -> None:
+        self._span_classifier.train(corpus, dev_corpus=dev_corpus)
+        self._slot_classifier.train(corpus, dev_corpus=dev_corpus)
 
     def predict(self, corpus: Corpus) -> None:
         self._span_classifier.predict(corpus)
