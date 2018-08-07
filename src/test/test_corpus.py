@@ -79,7 +79,7 @@ def test_slot():
 
 def test_instance():
     c = Corpus()
-    i = Instance("some text", c)
+    i = Instance("some text", "docid", c)
     assert not i.spans
     assert not i.frames
 
@@ -99,9 +99,9 @@ def test_instance():
 def test_corpus():
     c = Corpus()
     assert len(c.instances) == 0
-    i = c.new_instance("string")
+    i = c.new_instance("string", "docid")
     assert isinstance(i, Instance)
     assert len(c.instances) == 1
-    c.new_instance("foo")
-    c.new_instance("foo")
+    c.new_instance("foo", "docid")
+    c.new_instance("foo", "docid")
     assert len(c.instances) == 3
