@@ -54,3 +54,99 @@ def test_get_shortest_path(graph, tokens1, tokens2, result):
         assert len(sc.get_shortest_path(graph, tokens1, tokens2)) == result
     else:
         assert sc.get_shortest_path(graph, tokens1, tokens2) == result
+
+
+@pytest.mark.parametrize(
+    "graph,tokens1,tokens2,idx2word,result",
+    [
+        (
+            empty_graph,
+            MockToken.words("foo bar bat"),
+            MockToken.words("bla blubb boo", idx=5),
+            {
+                0: "foo",
+                1: "bar",
+                2: "bat",
+                3: "bla",
+                4: "blubb",
+                5: "boo",
+            },
+            [],
+        ),
+        (
+            fully_connected_graph,
+            MockToken.words("foo bar bat"),
+            MockToken.words("bla blubb boo", idx=3),
+            {
+                0: "foo",
+                1: "bar",
+                2: "bat",
+                3: "bla",
+                4: "blubb",
+                5: "boo",
+            },
+            ["foo","bla"],
+        ),
+        # (interesting_graph, MockToken.words("small cat", idx=1), MockToken.words("the big", idx=5), 5),
+    ]
+)
+def test_edge_words(graph, tokens1, tokens2, idx2word, result):
+    sc = SlotClassifier(MockTaskSpec())
+    assert sc.edge_words(graph, tokens1, tokens2, idx2word) == result
+
+
+@pytest.mark.parametrize(
+    "graph,tokens1,tokens2,idx2word,edge2dep,result",
+    [
+        (
+            empty_graph,
+            MockToken.words("foo bar bat"),
+            MockToken.words("bla blubb boo", idx=5),
+            {
+                0: "foo",
+                1: "bar",
+                2: "bat",
+                3: "bla",
+                4: "blubb",
+                5: "boo",
+            },
+            {
+                (0,1): "N",
+                (1,2): "VP",
+                (2,3): "Det",
+                (3,4): "PP",
+                (4,5): "ADJ",
+            },
+            '',
+        ),
+        (
+            fully_connected_graph,
+            MockToken.words("foo bar bat"),
+            MockToken.words("bla blubb boo", idx=3),
+            {
+                0: "foo",
+                1: "bar",
+                2: "bat",
+                3: "bla",
+                4: "blubb",
+                5: "boo",
+            },
+            {
+                (0,1): "N",
+                (0,3): "N",
+                (0,2): "N",
+                (1,2): "VP",
+                (1,3): "VP",
+                (2,3): "Det",
+                (2,1): "Det",
+                (3,4): "PP",
+                (4,5): "ADJ",
+            },
+            "foo N bla",
+        ),
+        # (interesting_graph, MockToken.words("small cat", idx=1), MockToken.words("the big", idx=5), 5),
+    ]
+)
+def test_edge_words_deps(graph, tokens1, tokens2, idx2word, edge2dep, result):
+    sc = SlotClassifier(MockTaskSpec())
+    assert sc.edge_words_deps(graph, tokens1, tokens2, idx2word, edge2dep) == result
