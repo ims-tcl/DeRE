@@ -96,23 +96,28 @@ class SlotClassifier:
         y_pred = self.cls.predict(x)
         predicted_labels = [self.labels[pi] for pi in y_pred]
         results_by_instance: List[List[Relation]] = []
-        for (anchor_span, filler_span), predicted_label in zip(span_pairs, predicted_labels):
+        for (anchor_span, filler_span), predicted_label in zip(
+            span_pairs, predicted_labels
+        ):
             instance = anchor_span.instance
             for instance_results in results_by_instance:
                 if instance_results[0][0][0].instance == instance:
-                    instance_results.append(((anchor_span, filler_span), predicted_label))
+                    instance_results.append(
+                        ((anchor_span, filler_span), predicted_label)
+                    )
                     break
             else:
-                results_by_instance.append([((anchor_span, filler_span), predicted_label)])
+                results_by_instance.append(
+                    [((anchor_span, filler_span), predicted_label)]
+                )
         for instance_results in results_by_instance:
             instance_results = self.filter_results(instance_results)
             self.generate_frames(instance_results)
 
     def filter_results(self, results: List[Relation]) -> List[Relation]:
-
         def filt(relation: Relation) -> bool:
             (anchor, filler), label = relation
-            if label == 'Nothing':
+            if label == "Nothing":
                 return True
             type_pair = (anchor.span_type, filler.span_type)
             return label in self.plausible_relations[type_pair]
@@ -123,7 +128,7 @@ class SlotClassifier:
         instance = results[0][0][0].instance
         anchored_frames: Dict[Span, Frame] = {}
         for (anchor, filler), label in results:
-            if label == 'Nothing':
+            if label == "Nothing":
                 continue
             assert not isinstance(label, str)
             frame_type, slot_type = label
@@ -150,7 +155,12 @@ class SlotClassifier:
                     prod.append([[(slot_type, filler) for filler in slot.fillers]])
                 else:
                     n = min(slot_type.max_cardinality, len(slot.fillers))
-                    prod.append([[(slot_type, ci) for ci in c] for c in combinations(slot.fillers, n)])
+                    prod.append(
+                        [
+                            [(slot_type, ci) for ci in c]
+                            for c in combinations(slot.fillers, n)
+                        ]
+                    )
             for assignment in product(*prod):
                 new_frame = instance.new_frame(frame.frame_type)
                 for term in assignment:
@@ -213,6 +223,7 @@ class SlotClassifier:
         graph_list: List[nx.Graph] = []
         idx2word_list: List[Dict[int, str]] = []
         edge2dep_list = []
+        sequence_words_list: List[Any] = []
         prev_status = -1
         for i, instance in enumerate(corpus.instances):
             doc, graph, idx2word, edge2dep = self.preprocess_text(instance.text)
@@ -224,6 +235,8 @@ class SlotClassifier:
                 graph_list.append(graph)
                 idx2word_list.append(idx2word)
                 edge2dep_list.append(edge2dep)
+                sequence_words_list.append(
+                    self.build_sequence(doc, span1, span2, window.start)
                 labels.append(relation)
             status = int(100 * i / len(corpus.instances))
             if prev_status != status and status % 10 == 0:
@@ -244,11 +257,18 @@ class SlotClassifier:
                 graph_list,
                 idx2word_list,
                 edge2dep_list,
+                sequence_words_list,
             )
 
         self.logger.info("creating features for train set")
         x = self.features_from_instance(
-            span1_list, span2_list, doc_list, graph_list, idx2word_list, edge2dep_list
+            span1_list,
+            span2_list,
+            doc_list,
+            graph_list,
+            idx2word_list,
+            edge2dep_list,
+            sequence_words_list,
         )
 
         self.logger.debug("labels: " + str(self.labels))
@@ -329,10 +349,17 @@ class SlotClassifier:
         graph_list: List[nx.Graph],
         idx2word_list: List[Dict[int, str]],
         edge2dep_list: List[Dict[Tuple[int, int], str]],
+        sequence_words_list: List[Any],
     ) -> None:
 
         _, shortest_path_list, path_list = self.get_shortest_path_features(
-            doc_list, graph_list, span1_list, span2_list, idx2word_list, edge2dep_list
+            doc_list,
+            graph_list,
+            span1_list,
+            span2_list,
+            idx2word_list,
+            edge2dep_list,
+            sequence_words_list,
         )
 
         self.cv_text = CountVectorizer()
@@ -349,6 +376,9 @@ class SlotClassifier:
 
         self.cv_deps_words = CountVectorizer(ngram_range=(2, 2))  # type: ignore
         self.cv_deps_words.fit(path_list)
+
+        self.cv_sequence_text = CountVectorizer()
+        self.cv_sequence_text.fit(sequence_words_list)
 
     def get_shortest_path_features(
         self,
@@ -412,6 +442,7 @@ class SlotClassifier:
         graph_list: List[nx.Graph],
         idx2word_list: List[Dict[int, str]],
         edge2dep_list: List[Dict[Tuple[int, int], str]],
+        sequence_words_list,
     ) -> spmatrix:
         # spacy words
 
@@ -426,12 +457,7 @@ class SlotClassifier:
         )
 
         shortest_path_features = self.get_shortest_path_features(
-            doc_list,
-            graph_list,
-            span1_list,
-            span2_list,
-            idx2word_list,
-            edge2dep_list,
+            doc_list, graph_list, span1_list, span2_list, idx2word_list, edge2dep_list
         )
 
         f_shortest_path, shortest_path_list, f_path_deps = shortest_path_features
@@ -451,6 +477,7 @@ class SlotClassifier:
         f_sequence_distance = np.ma.log(
             f_sequence_distance.reshape(f_sequence_distance.shape[0], 1)
         )
+        f_sequence_words = self.cv_sequence_text.transform(sequence_words_list)
 
         self.logger.debug(f_sp1_text.shape)
         self.logger.debug(f_sp2_text.shape)
@@ -458,6 +485,7 @@ class SlotClassifier:
         self.logger.debug(f_sp2_label.shape)
         self.logger.debug(f_shortest_path.shape)
         self.logger.debug(f_sequence_distance.shape)
+        self.logger.debug(f_sequence_words.shape)
         self.logger.debug(f_shortest_path_words.shape)
         self.logger.debug(f_path_deps.shape)
 
@@ -469,6 +497,7 @@ class SlotClassifier:
                 f_sp2_label,
                 csr_matrix(f_shortest_path),
                 csr_matrix(f_sequence_distance),
+                f_sequence_words,
                 f_shortest_path_words,
                 csr_matrix(f_path_deps),
             ]
@@ -482,17 +511,15 @@ class SlotClassifier:
                 self.cls,
                 self.cv_text,
                 self.cv_labels,
-                self.cv_deps_words,
                 self.labels,
+                self.cv_squence_text,
+                self.cv_deps_words,
             ],
             filename,
         )
 
     def load_model(self, filename: str) -> None:
-        jll = joblib.load(
-            filename
-        )
-        self.cls, self.cv_text, self.cv_labels, self.cv_deps_words, self.labels = jll
+        self.cls, self.cv_text, self.cv_labels, self.cv_deps_words, self.labels, self.cv_sequence_text = joblib.load(filename)
 
     @staticmethod
     def find_node(doc: Doc, span: Span) -> List[spacy.tokens.Token]:
@@ -580,3 +607,26 @@ class SlotClassifier:
                 except nx.NetworkXNoPath:
                     continue
         return shortest  # type: ignore
+
+
+    def build_sequence(self, doc, span1, span2):
+        tokens1 = self.find_node(doc, span1)
+        tokens2 = self.find_node(doc, span2)
+
+        max1 = max(token.i for token in tokens1)
+        min1 = min(token.i for token in tokens1)
+
+        max2 = max(token.i for token in tokens2)
+        min2 = min(token.i for token in tokens2)
+
+        if max1 + min1 > max2 + min2:
+            # 1 is after 2
+            m = max2 + 1
+            n = min1 - 1
+        else:
+            # 2 is after 1
+            m = max1 + 1
+            n = min2 - 1
+
+        tokens = doc[m:n]  # may be empty
+        return " ".join(t.text for t in tokens)
