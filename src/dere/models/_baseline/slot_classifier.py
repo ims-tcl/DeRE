@@ -235,8 +235,7 @@ class SlotClassifier:
                 graph_list.append(graph)
                 idx2word_list.append(idx2word)
                 edge2dep_list.append(edge2dep)
-                sequence_words_list.append(
-                    self.build_sequence(doc, span1, span2, window.start)
+                sequence_words_list.append(self.build_sequence(doc, span1, span2))
                 labels.append(relation)
             status = int(100 * i / len(corpus.instances))
             if prev_status != status and status % 10 == 0:
@@ -359,7 +358,6 @@ class SlotClassifier:
             span2_list,
             idx2word_list,
             edge2dep_list,
-            sequence_words_list,
         )
 
         self.cv_text = CountVectorizer()
@@ -512,14 +510,21 @@ class SlotClassifier:
                 self.cv_text,
                 self.cv_labels,
                 self.labels,
-                self.cv_squence_text,
                 self.cv_deps_words,
+                self.cv_sequence_text,
             ],
             filename,
         )
 
     def load_model(self, filename: str) -> None:
-        self.cls, self.cv_text, self.cv_labels, self.cv_deps_words, self.labels, self.cv_sequence_text = joblib.load(filename)
+        (
+            self.cls,
+            self.cv_text,
+            self.cv_labels,
+            self.labels,
+            self.cv_deps_words,
+            self.cv_sequence_text,
+        ) = joblib.load(filename)
 
     @staticmethod
     def find_node(doc: Doc, span: Span) -> List[spacy.tokens.Token]:

@@ -136,3 +136,5 @@ def test_edge_words(graph, tokens1, tokens2, idx2word, result):
 def test_edge_words_deps(graph, tokens1, tokens2, idx2word, edge2dep, result):
     sc = SlotClassifier(MockTaskSpec())
     assert sc.edge_words_deps(graph, tokens1, tokens2, idx2word, edge2dep) == result
+
+
