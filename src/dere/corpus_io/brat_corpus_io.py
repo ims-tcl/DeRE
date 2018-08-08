@@ -181,4 +181,17 @@ def frames_referencing_spans(
                     if filler in target:
                         connected_frames.add(frame)
                         updated = True
+    updated = True
+    while updated:
+        pruned_connected_frames = set()
+        updated = False
+        for frame in connected_frames:
+            pruned_connected_frames.add(frame)
+            for slot in frame.slots.values():
+                for filler in slot.fillers:
+                    if filler not in target_spans and filler not in connected_frames:
+                        if frame in pruned_connected_frames:
+                            pruned_connected_frames.remove(frame)
+                            updated = True
+        connected_frames = pruned_connected_frames
     return list(connected_frames)
