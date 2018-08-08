@@ -633,5 +633,4 @@ class SlotClassifier:
             n = min2 - 1
 
         tokens = doc[m:n]  # may be empty
-        assert isinstance(tokens, list)
         return " ".join(t.text for t in tokens)

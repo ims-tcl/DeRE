@@ -1,6 +1,11 @@
-from typing import Iterator, Any, Union, List
+from typing import Iterator, Any, Union, List, overload
+
 
 from spacy.vocab import Vocab
+
+class Span:
+  def __iter__(self) -> Iterator[Token]:
+    ...
 
 class Token:
     text: str
@@ -73,5 +78,10 @@ class Doc:
     def __iter__(self) -> Iterator[Token]:
         ...
 
-    def __getitem__(self, i: Union[int, slice]) -> Union[Token, List[Token]]:
+    @overload
+    def __getitem__(self, i: int) -> Token:
+        ...
+
+    @overload
+    def __getitem__(self, i: slice) -> Span:
         ...
