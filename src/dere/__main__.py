@@ -25,7 +25,7 @@ MODELS = {"baseline": BaselineModel, "nop": NOPModel}
 
 @click.group()
 @click.option("--verbosity", default="INFO")
-def cli(verbosity) -> None:
+def cli(verbosity: str) -> None:
     logging.basicConfig(stream=sys.stdout, level=getattr(logging, verbosity))
 
 
