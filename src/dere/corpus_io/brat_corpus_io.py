@@ -17,6 +17,8 @@ class BRATCorpusIO(CorpusIO):
         return corpus
 
     def dump(self, corpus: Corpus, path: str) -> None:
+        if not os.path.isdir(path):
+            os.makedirs(path)
         instances_by_doc_id: Dict[str, List[Instance]] = {}
         for instance in corpus.instances:
             if instance.document_id not in instances_by_doc_id:
