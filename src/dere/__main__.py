@@ -1,6 +1,7 @@
 import click
 import pickle
 import logging
+import importlib
 from typing import Optional
 
 # path hackery to get imports working as intended
@@ -21,12 +22,11 @@ CORPUS_IOS = {"BRAT": BRATCorpusIO, "CQSA": CQSACorpusIO}
 
 MODELS = {"baseline": BaselineModel, "nop": NOPModel}
 
-logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
-
 
 @click.group()
-def cli() -> None:
-    pass
+@click.option("--verbosity", default="INFO")
+def cli(verbosity) -> None:
+    logging.basicConfig(stream=sys.stdout, level=getattr(logging, verbosity))
 
 
 @cli.command()
@@ -40,27 +40,32 @@ def build(model: str, spec: str, outfile: str) -> None:
 def _build(model_name: str, spec_path: str, out_path: str) -> None:
     print("building with", model_name, spec_path, out_path)
     spec = dere.taskspec.load_from_xml(spec_path)
-    model = MODELS[model_name](spec)
+    try:
+        model = MODELS[model_name](spec)
+    except KeyError:
+        module, _, class_ = model_name.rpartition(".")
+        model_module = importlib.import_module(module)
+        model = getattr(model_module, class_)(spec)
     with open(out_path, "wb") as f:
         pickle.dump(model, f)
 
 
 @cli.command()
-@click.argument("corpus_path")
-@click.option("--model", default="bare_model.pkl")
+@click.option("--corpus-path", required=True)
+@click.option("--model-path", default="bare_model.pkl")
 @click.option("--outfile", default="trained_model.pkl")
 @click.option("--corpus-format", required=True)
 @click.option("--dev-corpus", required=False)
 @click.option("--corpus-split", required=False)
 def train(
     corpus_path: str,
-    model: str,
+    model_path: str,
     outfile: str,
     corpus_format: str,
     dev_corpus: Optional[str],
     corpus_split: Optional[str],
 ) -> None:
-    _train(corpus_path, model, outfile, corpus_format, dev_corpus, corpus_split)
+    _train(corpus_path, model_path, outfile, corpus_format, dev_corpus, corpus_split)
 
 
 def _train(
@@ -91,19 +96,19 @@ def _train(
 
 
 @cli.command()
-@click.argument("corpus_path")
-@click.option("--model", default="trained_model.pkl")
+@click.option("--corpus-path", required=True)
+@click.option("--model-path", default="trained_model.pkl")
 @click.option("--corpus-format", required=True)
 @click.option("--output-format", required=False, default=None)
 @click.option("--output", "-o", required=True)
 def predict(
     corpus_path: str,
-    model: str,
+    model_path: str,
     corpus_format: str,
     output_format: Optional[str],
     output: str,
 ) -> None:
-    _predict(corpus_path, model, corpus_format, output_format, output)
+    _predict(corpus_path, model_path, corpus_format, output_format, output)
 
 
 def _predict(
@@ -130,10 +135,10 @@ def _predict(
 
 @cli.command()
 @click.argument("corpus_path")
-@click.option("--model", default="trained_model.pkl")
+@click.option("--model-path", default="trained_model.pkl")
 @click.option("--corpus-format", required=True)
-def evaluate(corpus_path: str, model: str, corpus_format: str) -> None:
-    _evaluate(corpus_path, model, corpus_format)
+def evaluate(corpus_path: str, model_path: str, corpus_format: str) -> None:
+    _evaluate(corpus_path, model_path, corpus_format)
 
 
 def _evaluate(corpus_path: str, model_path: str, corpus_format: str) -> None:

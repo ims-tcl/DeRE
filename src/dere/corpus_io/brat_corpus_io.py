@@ -37,31 +37,31 @@ class BRATCorpusIO(CorpusIO):
                 for instance in instances:
                     text_path = os.path.join(path, instance.document_id + ".txt")
                     annotation_path = os.path.join(path, instance.document_id + ".ann")
-                    print(instance.text, file=text_file, end="")
+                    # print(instance.text, file=text_file, end="")
                     for span in instance.spans:
-                        print(
-                            "T%d\t%s %d %d\t%s"
-                            % (
-                                span_index,
-                                span.span_type.name,
-                                span.left + offset,
-                                span.right + offset,
-                                span.text,
-                            ),
-                            file=annotation_file,
-                        )
+                        # print(
+                        #     "T%d\t%s %d %d\t%s"
+                        #     % (
+                        #         span_index,
+                        #         span.span_type.name,
+                        #         span.left + offset,
+                        #         span.right + offset,
+                        #         span.text,
+                        #     ),
+                        #     file=annotation_file,
+                        # )
                         indices[span] = "T%d" % span_index
                         span_index += 1
                     for frame in instance.frames:
                         indices[frame] = "E%d" % frame_index
                         frame_index += 1
                     for frame in instance.frames:
-                        print(frame)
+                        # print(frame)
                         s = indices[frame] + "\t"
                         for slot_type, slot in frame.slots.items():
                             for filler in slot.fillers:
                                 s += "%s:%s " % (slot_type.name, indices[filler])
-                        print(s[:-1], file=annotation_file)
+                        # print(s[:-1], file=annotation_file)
                     offset += len(instance.text)
 
     def _populate_corpus(self, corpus: Corpus, path: str, load_gold: bool) -> None:
