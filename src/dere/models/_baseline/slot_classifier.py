@@ -140,9 +140,9 @@ class SlotClassifier:
                 anchor_slot.add(anchor)
                 anchored_frames[anchor] = frame
             frame.slots[slot_type].add(filler)
-        self.duplicate_overfilled_frames(instance)
+        self.split_overfilled_frames(instance)
 
-    def duplicate_overfilled_frames(self, instance: Instance) -> None:
+    def split_overfilled_frames(self, instance: Instance) -> None:
         old_frames = list(instance.frames)
         for frame in old_frames:
             frame.remove()

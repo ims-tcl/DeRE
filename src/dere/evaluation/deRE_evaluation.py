@@ -792,7 +792,7 @@ def cli():
 def deRE_evaluation(
     hypo: str, gold: str, verbose: bool, soft_span: bool, soft_overlap_span: bool
 ) -> None:
-    files = glob.glob(hypo + "/*.a2")
+    files = glob.glob(hypo + "/*.a2") + glob.glob(hypo + "/*.ann")
     gold_dir = gold
     do_soft_class = False
     do_soft_args = False
@@ -833,7 +833,7 @@ def deRE_evaluation(
 
     for f in files:
         f_dir, f_base = os.path.split(f)
-        pmid = re.sub(r"(\S+)\.a2", "\\1", f_base)
+        pmid = re.sub(r"(\S+)\.(a2|ann)", "\\1", f_base)
         events_in_text = {}
         a1_annotations = {}
         gold = []
