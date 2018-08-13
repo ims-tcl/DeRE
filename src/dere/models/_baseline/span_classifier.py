@@ -355,7 +355,7 @@ class SpanClassifier:
         self, predictions: Dict[str, List[List[str]]], corpus: Corpus
     ) -> None:
         for i, instance in enumerate(corpus.instances):
-            instance_tokens = word_tokenizer.span_tokenize(instance.text)
+            instance_tokens = list(word_tokenizer.span_tokenize(instance.text))
             for target_span_type in self.target_span_types:
                 instance_predictions = predictions[target_span_type.name][i]
                 current_span_left: Optional[int] = None

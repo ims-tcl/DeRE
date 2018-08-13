@@ -143,7 +143,8 @@ class SlotClassifier:
         self.duplicate_overfilled_frames(instance)
 
     def duplicate_overfilled_frames(self, instance: Instance) -> None:
-        for frame in instance.frames:
+        old_frames = list(instance.frames)
+        for frame in old_frames:
             frame.remove()
             frame_type = frame.frame_type
             # Each element of prod corresponds to a particular slot
@@ -633,5 +634,4 @@ class SlotClassifier:
             n = min2 - 1
 
         tokens = doc[m:n]  # may be empty
-        assert isinstance(tokens, list)
         return " ".join(t.text for t in tokens)

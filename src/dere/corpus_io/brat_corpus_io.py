@@ -16,16 +16,13 @@ class BRATCorpusIO(CorpusIO):
         self._populate_corpus(corpus, path, load_gold)
         return corpus
 
-    # TODO: somehow take care of splitting into different documents
     def dump(self, corpus: Corpus, path: str) -> None:
-        # first, delete any old output that might live in our directory
-        # scary: we are deleting a bunch of files here
         instances_by_doc_id: Dict[str, List[Instance]] = {}
         for instance in corpus.instances:
             if instance.document_id not in instances_by_doc_id:
                 instances_by_doc_id[instance.document_id] = []
             instances_by_doc_id[instance.document_id].append(instance)
-        # now start writing our new annotations
+
         for doc_id, instances in instances_by_doc_id.items():
             offset = 0
             span_index = 1
@@ -181,4 +178,19 @@ def frames_referencing_spans(
                     if filler in target:
                         connected_frames.add(frame)
                         updated = True
+    # Exclude frames which reference spans not in our target_spans
+    # Then recursively remove those frames which refer to those frames, and so on
+    updated = True
+    while updated:
+        pruned_connected_frames = set()
+        updated = False
+        for frame in connected_frames:
+            pruned_connected_frames.add(frame)
+            for slot in frame.slots.values():
+                for filler in slot.fillers:
+                    if filler not in target_spans and filler not in connected_frames:
+                        if frame in pruned_connected_frames:
+                            pruned_connected_frames.remove(frame)
+                            updated = True
+        connected_frames = pruned_connected_frames
     return list(connected_frames)
