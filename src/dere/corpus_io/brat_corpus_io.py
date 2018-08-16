@@ -142,6 +142,10 @@ class BRATCorpusIO(CorpusIO):
                     line = line.strip()
                     if line[0] == "E":
                         tag, *kvpairs = line.strip().split()
+                        frame_type_name, _ = kvpairs[0].rsplit(":", 1)
+                        frame_type = self._spec.type_lookup("frame:" + frame_type_name)
+                        if type(frame_type) is not FrameType:
+                            continue
                         frame = frames[tag]
                         for kv in kvpairs:
                             slot_name, filler_tag = kv.rsplit(":", 1)

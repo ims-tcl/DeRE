@@ -20,7 +20,7 @@ from sklearn.metrics import (
     confusion_matrix,
 )
 from sklearn.externals import joblib
-from scipy.sparse import hstack, csr_matrix, spmatrix
+from scipy.sparse import hstack, csr_matrix, spmatrix, vstack
 
 from dere import Result
 from dere.corpus import Corpus, Instance, Frame, Span, Slot, Filler
@@ -85,7 +85,16 @@ class SlotClassifier:
                     best_f1 = micro_f1
             assert best_cls is not None
             self.logger.info("Best c: " + str(best_c))
-            self.cls = best_cls
+            self.logger.info("Retraining on all data")
+            dev_x, dev_y, _ = self.get_features_and_labels(dev_corpus, is_train=False)
+            self.logger.info("x shape: " + str(x.shape))
+            self.logger.info("dev_x shape: " + str(dev_x.shape))
+            train_x_all = vstack([x, dev_x])
+            self.logger.info("train_x_all shape: " + str(train_x_all.shape))
+            train_y_all = np.concatenate([y, dev_y])
+            self.cls = LinearSVC(C = best_c, class_weight="balanced")
+            self.cls.fit(train_x_all, train_y_all)
+            #self.cls = best_cls
 
     def predict(self, corpus: Corpus) -> None:
         x, _, span_pairs = self.get_features_and_labels(corpus)
@@ -111,6 +120,13 @@ class SlotClassifier:
                     [((anchor_span, filler_span), predicted_label)]
                 )
         for instance_results in results_by_instance:
+            #self.logger.debug("XXX results before decoding XXX\n")
+            for ir in instance_results:
+                span1, span2 = ir[0]
+                relation = ir[1]
+                self.logger.debug("BEFORE DECODING: \t" + str(span1.text) + "\t" + str(span2.text) + "\t" + str(relation))
+            #self.logger.debug(instance_results)
+            #self.logger.debug("XXX end results before decoding XXX")
             instance_results = self.filter_results(instance_results)
             self.generate_frames(instance_results)
 
@@ -228,6 +244,8 @@ class SlotClassifier:
         prev_status = -1
         for i, instance in enumerate(corpus.instances):
             doc, graph, idx2word, edge2dep = self.preprocess_text(instance.text)
+            for span in instance.spans:
+                self.logger.debug("SPANS: " + str(span.text) + "\t" + str(span.span_type))
             relations = self.get_relations(instance)
             for (span1, span2), relation in relations:
                 span1_list.append(span1)
@@ -275,8 +293,11 @@ class SlotClassifier:
 
         y = np.array([self.labels.index(label) for label in labels])
 
-        # bincount_y = np.bincount(y)
-        # self.logger.debug("counts: " + str(bincount_y))
+        bincount_y = np.bincount(y)
+        self.logger.info(str(bincount_y))
+        #for l_idx in range(len(labels)):
+        #    self.logger.info(str(labels[l_idx]) + "\t" + str(bincount_y[l_idx]))
+
         return x, y, list(zip(span1_list, span2_list))
 
     def get_relations(self, instance: Instance) -> List[Relation]:
@@ -478,14 +499,23 @@ class SlotClassifier:
         )
         f_sequence_words = self.cv_sequence_text.transform(sequence_words_list)
 
+        self.logger.debug("f_sp1_text")
         self.logger.debug(f_sp1_text.shape)
+        self.logger.debug("f_sp2_text")
         self.logger.debug(f_sp2_text.shape)
+        self.logger.debug("f_sp1_label")
         self.logger.debug(f_sp1_label.shape)
+        self.logger.debug("f_sp2_label")
         self.logger.debug(f_sp2_label.shape)
+        self.logger.debug("f_shortest_path_distance")
         self.logger.debug(f_shortest_path.shape)
+        self.logger.debug("f_sequence_distance")
         self.logger.debug(f_sequence_distance.shape)
+        self.logger.debug("f_sequence_words")
         self.logger.debug(f_sequence_words.shape)
+        self.logger.debug("f_shortest_path_words")
         self.logger.debug(f_shortest_path_words.shape)
+        self.logger.debug("f_path_deps")
         self.logger.debug(f_path_deps.shape)
 
         X_feats = hstack(

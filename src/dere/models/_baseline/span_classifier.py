@@ -14,6 +14,7 @@ from nltk.tokenize import TreebankWordTokenizer
 from dere.taskspec import TaskSpecification, SpanType
 from dere.corpus import Corpus, Instance, Span
 
+from sklearn.externals import joblib
 
 word_tokenizer = TreebankWordTokenizer()
 
@@ -64,7 +65,7 @@ class SpanClassifier:
 
         for t in self.target_span_types:
             X_train2 = self.get_span_type_specific_features(corpus_train, t)
-            X_train_merged = self.merge_features(X_train, X_train2)
+            X_train_merged = X_train  #self.merge_features(X_train, X_train2)
 
             self.logger.info("Optimizing classifier for class " + str(t))
             target_t = self.get_binary_labels(corpus_train, t, use_bio=True)
@@ -87,7 +88,7 @@ class SpanClassifier:
             else:
                 # get features for dev corpus
                 X_dev2 = self.get_span_type_specific_features(dev_corpus, t)
-                X_dev_merged = self.merge_features(X_dev, X_dev2)
+                X_dev_merged = X_dev  #self.merge_features(X_dev, X_dev2)
                 y_dev = self.get_binary_labels(dev_corpus, t, use_bio=True)
                 # optimize on dev
                 best_f1 = -1.0
@@ -123,7 +124,7 @@ class SpanClassifier:
                             all_possible_states=aps,
                             c2=c2v,
                         )
-                        crf.fit(X_train, target_t)
+                        crf.fit(X_train_merged, target_t)
 
                         micro_f1 = self.evaluate(crf, X_dev_merged, y_dev)
                         if micro_f1 > best_f1:
@@ -133,6 +134,24 @@ class SpanClassifier:
                         if micro_f1 == 1.0:  # cannot get better
                             stopTraining = True
                 self.logger.info("Best setup: " + str(best_setup))
+                with open("best_parameters_span", 'a') as out:
+                    out.write(t.name)
+                    out.write("\n")
+                    for k, v in best_setup.items():
+                        out.write(str(k) + "\t" + str(v) + "\n")
+                    out.write("\n")
+                self.logger.info("Retraining best setup with all available data")
+                X_train_all = X_train_merged + X_dev_merged
+                target_all = target_t + y_dev
+                crf = CRF(
+                        algorithm="l2sgd",
+                        all_possible_transitions=True,
+                        all_possible_states=best_setup["aps"],
+                        c2=best_setup["c2v"]
+                )
+                crf.fit(X_train_all, target_all)
+                self.target2classifier[t.name] = crf
+
 
     def evaluate(
         self, classifier: CRF, X_dev: List[List[Features]], y_dev: List[List[str]]
@@ -165,10 +184,14 @@ class SpanClassifier:
         X_test = self.get_features(corpus)
         predictions = {}
         for t in self.target_span_types:
+            self.logger.debug(t)
             X_test2 = self.get_span_type_specific_features(corpus, t)
-            X_test_merged = self.merge_features(X_test, X_test2)
-
+            X_test_merged = X_test  #self.merge_features(X_test, X_test2)
             y_pred = self.target2classifier[t.name].predict(X_test_merged)
+            for X_item, y_item in zip(X_test_merged, y_pred):
+                self.logger.debug(X_item)
+                self.logger.debug(y_item)
+            self.logger.debug("-----")
             predictions[t.name] = y_pred
         self.prepare_results(predictions, corpus)
 
@@ -317,11 +340,20 @@ class SpanClassifier:
                 if i < len(token_spans) - 1:
                     next_token = token_spans[i + 1]
                     features.update(
-                        self.token_features(instance, next_token, "-1:word")
+                        self.token_features(instance, next_token, "+1:word")
                     )
                 else:
                     features["EOS"] = True
+
+                #for key in features:
+                #    if isinstance(features[key], bool):
+                #        if features[key]:
+                #            features[key] = "1"
+                #        else:
+                #            features[key] = "0"
+
                 instance_feature_list.append(features)
+
             feature_list.append(instance_feature_list)
         return feature_list
 
@@ -340,13 +372,28 @@ class SpanClassifier:
                         return True
         return False
 
-    def contains_digit(self, word: str) -> bool:
-        return len(set(word) & set(string.digits)) > 0
+    def contains_digit(self, word: str) -> str:
+        #return len(set(word) & set(string.digits)) > 0
+        if any(ch.isdigit() for ch in word):
+            if not len(set(word) & set(string.digits)) > 0:
+                print("ERROR: different results for " + str(word) + " containing digit")
+            return '1'
+        if len(set(word) & set(string.digits)) > 0:
+            print("ERROR: different results for " + str(word) + " containing digit")
+        return '0'
 
-    def contains_punct(self, word: str) -> bool:
+    def contains_punct(self, word: str) -> str:
         # TODO -- change to string.punctuation
-        punct = ".,-"
-        return len(set(word) & set(punct)) > 0
+        #punct = ".,-"
+        #return len(set(word) & set(punct)) > 0
+        for punct in [".", ",", "-"]:
+            if punct in word:
+                if not len(set(word) & set(punct)) > 0:
+                    print("ERROR: different results for " + str(word) + " containing punct") 
+                return '1'
+        if len(set(word) & set(punct)) > 0:
+            print("ERROR: different results for " + str(word) + " containing punct")
+        return '0'
 
     def get_stem(self, word: str) -> str:
         return self.ps.stem(word)
@@ -361,6 +408,8 @@ class SpanClassifier:
                 current_span_left: Optional[int] = None
                 current_span_right = 0
                 for token, label in zip(instance_tokens, instance_predictions):
+                    if label != "O":
+                        self.logger.debug("token: " + str(token) + "\t" + str(instance.text[token[0]:token[1]]) + "\t" + "label: " + str(target_span_type))
                     if current_span_left is not None and label in "BO":
                         instance.new_span(
                             target_span_type,
@@ -372,3 +421,10 @@ class SpanClassifier:
                         current_span_left = token[0]
                     if label in "BI":
                         current_span_right = token[1]
+                if current_span_left is not None:  # HEIKE: added; otherwise spans at end of window are neglected
+                    instance.new_span(
+                            target_span_type,
+                            current_span_left,
+                            current_span_right,
+                    )
+
