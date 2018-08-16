@@ -92,9 +92,9 @@ class SlotClassifier:
             train_x_all = vstack([x, dev_x])
             self.logger.info("train_x_all shape: " + str(train_x_all.shape))
             train_y_all = np.concatenate([y, dev_y])
-            self.cls = LinearSVC(C = best_c, class_weight="balanced")
+            self.cls = LinearSVC(C=best_c, class_weight="balanced")
             self.cls.fit(train_x_all, train_y_all)
-            #self.cls = best_cls
+            # self.cls = best_cls
 
     def predict(self, corpus: Corpus) -> None:
         x, _, span_pairs = self.get_features_and_labels(corpus)
@@ -120,13 +120,12 @@ class SlotClassifier:
                     [((anchor_span, filler_span), predicted_label)]
                 )
         for instance_results in results_by_instance:
-            #self.logger.debug("XXX results before decoding XXX\n")
+            # self.logger.debug("XXX results before decoding XXX\n")
             for ir in instance_results:
                 span1, span2 = ir[0]
                 relation = ir[1]
-                self.logger.debug("BEFORE DECODING: \t" + str(span1.text) + "\t" + str(span2.text) + "\t" + str(relation))
-            #self.logger.debug(instance_results)
-            #self.logger.debug("XXX end results before decoding XXX")
+            # self.logger.debug(instance_results)
+            # self.logger.debug("XXX end results before decoding XXX")
             instance_results = self.filter_results(instance_results)
             self.generate_frames(instance_results)
 
@@ -295,7 +294,7 @@ class SlotClassifier:
 
         bincount_y = np.bincount(y)
         self.logger.info(str(bincount_y))
-        #for l_idx in range(len(labels)):
+        # for l_idx in range(len(labels)):
         #    self.logger.info(str(labels[l_idx]) + "\t" + str(bincount_y[l_idx]))
 
         return x, y, list(zip(span1_list, span2_list))
