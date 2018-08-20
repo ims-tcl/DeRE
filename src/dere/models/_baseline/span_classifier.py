@@ -18,6 +18,7 @@ from sklearn.externals import joblib
 
 word_tokenizer = TreebankWordTokenizer()
 
+import pickle
 
 Features = Dict[str, Union[str, bool]]
 
@@ -63,10 +64,12 @@ class SpanClassifier:
             "target span types: " + str([st.name for st in self.target_span_types])
         )
 
+        to_dump = {}
+
         for t in self.target_span_types:
             X_train2 = self.get_span_type_specific_features(corpus_train, t)
             X_train_merged = X_train  # self.merge_features(X_train, X_train2)
-
+            #X_train_merged = self.merge_features(X_train, X_train2)
             self.logger.info("Optimizing classifier for class " + str(t))
             target_t = self.get_binary_labels(corpus_train, t, use_bio=True)
             self.logger.debug(target_t)
@@ -89,12 +92,14 @@ class SpanClassifier:
                 # get features for dev corpus
                 X_dev2 = self.get_span_type_specific_features(dev_corpus, t)
                 X_dev_merged = X_dev  # self.merge_features(X_dev, X_dev2)
+                #X_dev_merged = self.merge_features(X_dev, X_dev2)
                 y_dev = self.get_binary_labels(dev_corpus, t, use_bio=True)
                 # optimize on dev
                 best_f1 = -1.0
                 Setup = TypedDict("Setup", {"aps": bool, "c2v": float})
                 best_setup: Setup = {"c2v": 0.001, "aps": True}
                 stopTraining = False
+                to_dump[t] = [X_train_merged, target_t]
                 for aps in [True, False]:
                     if stopTraining:
                         break
@@ -151,6 +156,10 @@ class SpanClassifier:
                 )
                 crf.fit(X_train_all, target_all)
                 self.target2classifier[t.name] = crf
+            
+        with open("new_code_span_train", 'wb') as dump_me:
+            pickle.dump(to_dump, dump_me)
+        #exit()
 
     def evaluate(
         self, classifier: CRF, X_dev: List[List[Features]], y_dev: List[List[str]]
@@ -182,16 +191,21 @@ class SpanClassifier:
             return []
         X_test = self.get_features(corpus)
         predictions = {}
+        to_dump = {}
         for t in self.target_span_types:
             self.logger.debug(t)
             X_test2 = self.get_span_type_specific_features(corpus, t)
             X_test_merged = X_test  # self.merge_features(X_test, X_test2)
+            #X_test_merged = self.merge_features(X_test, X_test2)
+            to_dump[t.name] = [X_test_merged]
             y_pred = self.target2classifier[t.name].predict(X_test_merged)
             for X_item, y_item in zip(X_test_merged, y_pred):
                 self.logger.debug(X_item)
                 self.logger.debug(y_item)
             self.logger.debug("-----")
             predictions[t.name] = y_pred
+        with open("new_code_span_predict", 'wb') as dump_me:
+            pickle.dump(to_dump, dump_me)
         self.prepare_results(predictions, corpus)
 
     def get_spans_for_tokens(
@@ -229,7 +243,9 @@ class SpanClassifier:
     ) -> List[List[str]]:
         binary_labels = []
         for instance in corpus.instances:
-            instance_tokens = list(word_tokenizer.span_tokenize(instance.text))
+            instance_text = instance.text.replace('"', "'")
+            instance.text = instance_text
+            instance_tokens = list(word_tokenizer.span_tokenize(instance_text))
             spans_for_tokens = self.get_spans_for_tokens(instance_tokens, instance)
 
             # do binarization based on given target label t
@@ -274,7 +290,9 @@ class SpanClassifier:
     ) -> List[List[Features]]:
         feature_list = []
         for instance in corpus.instances:
-            words = list(word_tokenizer.tokenize(instance.text))
+            instance_text = instance.text.replace('"', "'")
+            instance.text = instance_text
+            words = list(word_tokenizer.tokenize(instance_text))
             instance_feature_list = []
             for word in words:
                 features: Features = {}
@@ -321,7 +339,9 @@ class SpanClassifier:
     def get_features(self, corpus: Corpus) -> List[List[Features]]:
         feature_list = []
         for instance in corpus.instances:
-            token_spans = list(word_tokenizer.span_tokenize(instance.text))
+            instance_text = instance.text.replace('"', "'")
+            instance.text = instance_text
+            token_spans = list(word_tokenizer.span_tokenize(instance_text))
             instance_feature_list = []
             for i, token in enumerate(token_spans):
                 features = self.token_features(instance, token, "word")
@@ -386,7 +406,9 @@ class SpanClassifier:
         self, predictions: Dict[str, List[List[str]]], corpus: Corpus
     ) -> None:
         for i, instance in enumerate(corpus.instances):
-            instance_tokens = list(word_tokenizer.span_tokenize(instance.text))
+            instance_text = instance.text.replace('"', "'")
+            instance.text = instance_text
+            instance_tokens = list(word_tokenizer.span_tokenize(instance_text))
             for target_span_type in self.target_span_types:
                 instance_predictions = predictions[target_span_type.name][i]
                 current_span_left: Optional[int] = None

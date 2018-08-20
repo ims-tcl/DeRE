@@ -124,6 +124,7 @@ class SlotClassifier:
             for ir in instance_results:
                 span1, span2 = ir[0]
                 relation = ir[1]
+                self.logger.debug("BEFORE DECODING: " + "\t" + span1.text + "\t" + span2.text + "\t" + str(relation))
             # self.logger.debug(instance_results)
             # self.logger.debug("XXX end results before decoding XXX")
             instance_results = self.filter_results(instance_results)
@@ -242,7 +243,8 @@ class SlotClassifier:
         sequence_words_list: List[Any] = []
         prev_status = -1
         for i, instance in enumerate(corpus.instances):
-            doc, graph, idx2word, edge2dep = self.preprocess_text(instance.text)
+            instance_text = instance.text.replace('"', "'")
+            doc, graph, idx2word, edge2dep = self.preprocess_text(instance_text)
             for span in instance.spans:
                 self.logger.debug("SPANS: " + str(span.text) + "\t" + str(span.span_type))
             relations = self.get_relations(instance)
