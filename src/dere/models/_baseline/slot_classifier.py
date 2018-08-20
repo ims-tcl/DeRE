@@ -124,7 +124,9 @@ class SlotClassifier:
             for ir in instance_results:
                 span1, span2 = ir[0]
                 relation = ir[1]
-                self.logger.debug("BEFORE DECODING: " + "\t" + span1.text + "\t" + span2.text + "\t" + str(relation))
+                msg = "BEFORE DECODING: " + "\t" + span1.text + "\t"
+                msg += span2.text + "\t" + str(relation)
+                self.logger.debug(msg)
             # self.logger.debug(instance_results)
             # self.logger.debug("XXX end results before decoding XXX")
             instance_results = self.filter_results(instance_results)

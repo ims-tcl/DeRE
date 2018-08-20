@@ -18,7 +18,7 @@ from sklearn.externals import joblib
 
 word_tokenizer = TreebankWordTokenizer()
 
-import pickle
+# import pickle
 
 Features = Dict[str, Union[str, bool]]
 
@@ -69,7 +69,7 @@ class SpanClassifier:
         for t in self.target_span_types:
             X_train2 = self.get_span_type_specific_features(corpus_train, t)
             X_train_merged = X_train  # self.merge_features(X_train, X_train2)
-            #X_train_merged = self.merge_features(X_train, X_train2)
+            # X_train_merged = self.merge_features(X_train, X_train2)
             self.logger.info("Optimizing classifier for class " + str(t))
             target_t = self.get_binary_labels(corpus_train, t, use_bio=True)
             self.logger.debug(target_t)
@@ -92,7 +92,7 @@ class SpanClassifier:
                 # get features for dev corpus
                 X_dev2 = self.get_span_type_specific_features(dev_corpus, t)
                 X_dev_merged = X_dev  # self.merge_features(X_dev, X_dev2)
-                #X_dev_merged = self.merge_features(X_dev, X_dev2)
+                # X_dev_merged = self.merge_features(X_dev, X_dev2)
                 y_dev = self.get_binary_labels(dev_corpus, t, use_bio=True)
                 # optimize on dev
                 best_f1 = -1.0
@@ -156,10 +156,10 @@ class SpanClassifier:
                 )
                 crf.fit(X_train_all, target_all)
                 self.target2classifier[t.name] = crf
-            
-        with open("new_code_span_train", 'wb') as dump_me:
-            pickle.dump(to_dump, dump_me)
-        #exit()
+
+        # with open("new_code_span_train", 'wb') as dump_me:
+        #    pickle.dump(to_dump, dump_me)
+        # exit()
 
     def evaluate(
         self, classifier: CRF, X_dev: List[List[Features]], y_dev: List[List[str]]
@@ -196,7 +196,7 @@ class SpanClassifier:
             self.logger.debug(t)
             X_test2 = self.get_span_type_specific_features(corpus, t)
             X_test_merged = X_test  # self.merge_features(X_test, X_test2)
-            #X_test_merged = self.merge_features(X_test, X_test2)
+            # X_test_merged = self.merge_features(X_test, X_test2)
             to_dump[t.name] = [X_test_merged]
             y_pred = self.target2classifier[t.name].predict(X_test_merged)
             for X_item, y_item in zip(X_test_merged, y_pred):
@@ -204,8 +204,8 @@ class SpanClassifier:
                 self.logger.debug(y_item)
             self.logger.debug("-----")
             predictions[t.name] = y_pred
-        with open("new_code_span_predict", 'wb') as dump_me:
-            pickle.dump(to_dump, dump_me)
+        # with open("new_code_span_predict", 'wb') as dump_me:
+        #    pickle.dump(to_dump, dump_me)
         self.prepare_results(predictions, corpus)
 
     def get_spans_for_tokens(
