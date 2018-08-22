@@ -25,7 +25,6 @@ class BRATCorpusIO(CorpusIO):
 
         for doc_id, instances in instances_by_doc_id.items():
             offset = 0
-            span_index = 1
             frame_index = 1
             indices: Dict[Union[Frame, Span], str] = {}
             text_path = os.path.join(path, doc_id + ".txt")
@@ -39,7 +38,7 @@ class BRATCorpusIO(CorpusIO):
                         print(
                             "T%d\t%s %d %d\t%s"
                             % (
-                                span_index,
+                                span.index,
                                 span.span_type.name,
                                 span.left + offset,
                                 span.right + offset,
@@ -47,8 +46,7 @@ class BRATCorpusIO(CorpusIO):
                             ),
                             file=annotation_file,
                         )
-                        indices[span] = "T%d" % span_index
-                        span_index += 1
+                        indices[span] = "T%d" % span.index
                     for frame in instance.frames:
                         indices[frame] = "E%d" % frame_index
                         frame_index += 1
@@ -120,6 +118,7 @@ class BRATCorpusIO(CorpusIO):
                                     span_type,
                                     s_left - i_left,
                                     s_right - i_left,
+                                    int(tag[1:])
                                 )
                                 spans[tag] = span
                                 break
