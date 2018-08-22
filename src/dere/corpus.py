@@ -17,13 +17,6 @@ class Instance:
         self.span_indices: Set[int] = set()
 
     def new_span(self, span_type: SpanType, left: int, right: int, index: Optional[int] = None) -> Span:
-        if index is None:
-            for index in count(1):
-                if index not in self.span_indices:
-                    break
-        if index in self.span_indices:
-            raise Exception("Duplicate span index: %d" % index)
-        self.span_indices.add(index)
         span = Span(span_type, left, right, self, index)
         self.spans.append(span)
         return span
@@ -79,7 +72,7 @@ class Span:
         left: int,
         right: int,
         instance: Instance,
-        index: int
+        index: Optional[int]
     ) -> None:
         if left > right:
             raise ValueError("Can't create Span: left can't be bigger than right")

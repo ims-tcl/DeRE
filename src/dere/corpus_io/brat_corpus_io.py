@@ -26,15 +26,26 @@ class BRATCorpusIO(CorpusIO):
         for doc_id, instances in instances_by_doc_id.items():
             offset = 0
             frame_index = 1
+            span_index = 1
             indices: Dict[Union[Frame, Span], str] = {}
             text_path = os.path.join(path, doc_id + ".txt")
             annotation_path = os.path.join(path, doc_id + ".ann")
             with open(text_path, "w") as text_file, open(annotation_path, "w") as annotation_file:
+                specified_span_indices: Set[int] = set()
+                for instance in instances:
+                    for span in instance.spans:
+                        if span.index is not None:
+                            specified_span_indices.add(span.index)
                 for instance in instances:
                     text_path = os.path.join(path, instance.document_id + ".txt")
                     annotation_path = os.path.join(path, instance.document_id + ".ann")
                     print(instance.text, file=text_file, end="")
                     for span in instance.spans:
+                        if span.index is None:
+                            while span_index in specified_span_indices:
+                                span_index += 1
+                            span.index = span_index
+                            span_index += 1
                         print(
                             "T%d\t%s %d %d\t%s"
                             % (
