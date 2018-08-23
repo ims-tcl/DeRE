@@ -72,17 +72,20 @@ class BRATCorpusIO(CorpusIO):
 
     def _populate_corpus(self, corpus: Corpus, path: str, load_gold: bool) -> None:
         doc_id_list = list(
-            {fname[:-3] for fname in os.listdir(path) if fname.endswith(".a1")}
+            {fname[:-4] for fname in os.listdir(path) if fname.endswith(".txt")}
         )
         for cur_id in doc_id_list:
             annotation2filename: Optional[str] = None
             if load_gold:
                 annotation2filename = os.path.join(path, (cur_id + ".a2"))
+            annotation1filename: Optional[str] = None
+            if os.path.exists(os.path.join(path, (cur_id + ".a1"))):
+                annotation1filename = os.path.join(path, (cur_id + ".a1"))
             self.read_data(
                 corpus=corpus,
                 textfilename=os.path.join(path, (cur_id + ".txt")),
                 doc_id=cur_id,
-                annotation1filename=os.path.join(path, (cur_id + ".a1")),
+                annotation1filename=annotation1filename,
                 annotation2filename=annotation2filename,
             )
 
@@ -91,10 +94,12 @@ class BRATCorpusIO(CorpusIO):
         corpus: Corpus,
         textfilename: str,
         doc_id: str,
-        annotation1filename: str,
+        annotation1filename: Optional[str] = None,
         annotation2filename: Optional[str] = None,
     ) -> None:
-        annotation_filenames = [annotation1filename]
+        annotation_filenames = []
+        if annotation1filename is not None:
+            annotation_filenames.append(annotation1filename)
         if annotation2filename is not None:
             annotation_filenames.append(annotation2filename)
 

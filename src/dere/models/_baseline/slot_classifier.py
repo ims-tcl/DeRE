@@ -76,14 +76,14 @@ class SlotClassifier:
         x, y = self.shuffle(x_tmp, y_tmp)
 
         if dev_corpus is None:
-            self.cls = LinearSVC()
+            self.cls = LinearSVC(max_iter=10000)
             self.cls.fit(x, y)
         else:
             best_f1 = -1.0
             best_c = 0.0
             best_cls = None
             for c_param in [0.01, 0.03, 0.1, 0.3, 1.0, 3.0, 10.0, 30.0, 100]:
-                self.cls = LinearSVC(C=c_param, class_weight="balanced")
+                self.cls = LinearSVC(C=c_param, class_weight="balanced", max_iter=10000)
                 self.cls.fit(x, y)
                 self.logger.info("current c: " + str(c_param))
                 micro_f1 = self.evaluate(dev_corpus)
@@ -100,7 +100,7 @@ class SlotClassifier:
             self.logger.info("train_x_all shape: " + str(train_x_all_tmp.shape))
             train_y_all_tmp = np.concatenate([y, dev_y])
             train_x_all, train_y_all = self.shuffle(train_x_all_tmp, train_y_all_tmp)
-            self.cls = LinearSVC(C=best_c, class_weight="balanced")
+            self.cls = LinearSVC(C=best_c, class_weight="balanced", max_iter=10000)
             self.cls.fit(train_x_all, train_y_all)
 
     def predict(self, corpus: Corpus) -> None:
