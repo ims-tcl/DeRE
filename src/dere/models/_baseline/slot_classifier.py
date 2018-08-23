@@ -6,7 +6,6 @@ import random
 from itertools import chain, combinations, product
 from operator import mul
 from typing import Optional, Dict, Tuple, List, Set, Any, Union, cast, Sequence
-from sklearn import _ArrayLike
 
 import networkx as nx
 import numpy as np
@@ -35,6 +34,7 @@ Edge = Tuple[FrameType, SlotType]
 Label = Union[str, Edge]
 Relation = Tuple[SpanPair, Label]
 Arc = Tuple[FrameType, SlotType]
+_ArrayLike = Union[List, np.ndarray, spmatrix]
 
 
 class SlotClassifier:
