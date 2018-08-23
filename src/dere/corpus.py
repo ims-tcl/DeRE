@@ -1,6 +1,7 @@
 from __future__ import annotations
 from typing import List, Union, Set, Dict, Optional, Tuple
 from dataclasses import dataclass, field
+from itertools import count
 import random
 
 from dere.taskspec import SpanType, FrameType, SlotType
@@ -13,9 +14,10 @@ class Instance:
         self.corpus = corpus
         self.spans: List[Span] = []
         self.frames: List[Frame] = []
+        self.span_indices: Set[int] = set()
 
-    def new_span(self, span_type: SpanType, left: int, right: int) -> Span:
-        span = Span(span_type, left, right, self)
+    def new_span(self, span_type: SpanType, left: int, right: int, index: Optional[int] = None) -> Span:
+        span = Span(span_type, left, right, self, index)
         self.spans.append(span)
         return span
 
@@ -69,7 +71,8 @@ class Span:
         span_type: SpanType,
         left: int,
         right: int,
-        instance: Instance
+        instance: Instance,
+        index: Optional[int]
     ) -> None:
         if left > right:
             raise ValueError("Can't create Span: left can't be bigger than right")
@@ -77,6 +80,7 @@ class Span:
         self.left = left
         self.right = right
         self.instance = instance
+        self.index = index
 
     def remove(self) -> None:
         self.instance.spans.remove(self)

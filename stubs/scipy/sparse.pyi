@@ -21,3 +21,10 @@ def hstack(
 ) -> spmatrix:
     ...
 
+def vstack(
+    blocks: Sequence[spmatrix],
+    format: Optional[str] = None,
+    dtype: Optional[dtype] = None
+) -> spmatrix:
+    ...
+

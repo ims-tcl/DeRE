@@ -43,4 +43,3 @@ class CRF:
 
     def predict(self, X: List[List[dict]]) -> List[List[str]]:
         ...
-

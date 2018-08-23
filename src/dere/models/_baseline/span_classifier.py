@@ -3,6 +3,7 @@
 import copy
 import logging
 import string
+import random
 from typing import Dict, List, Tuple, Set, Optional, Union, cast
 
 from mypy_extensions import TypedDict
@@ -14,9 +15,9 @@ from nltk.tokenize import TreebankWordTokenizer
 from dere.taskspec import TaskSpecification, SpanType
 from dere.corpus import Corpus, Instance, Span
 
+from sklearn.externals import joblib
 
 word_tokenizer = TreebankWordTokenizer()
-
 
 Features = Dict[str, Union[str, bool]]
 
@@ -45,6 +46,16 @@ class SpanClassifier:
                 self.target_span_types.remove(t)
         # initialize everything necessary
 
+    def shuffle(self, X: List, y: List) -> Tuple[List, List]:
+        indices = [i for i in range(len(X))]
+        # using shuffle instead of permutation to reproduce set from old code
+        # TODO: change to permutation as this is more elegant
+        random.seed(1111)
+        random.shuffle(indices)
+        X_shuffled = [X[i] for i in indices]
+        y_shuffled = [y[i] for i in indices]
+        return X_shuffled, y_shuffled
+
     def train(
         self,
         corpus_train: Corpus,
@@ -64,11 +75,14 @@ class SpanClassifier:
 
         for t in self.target_span_types:
             X_train2 = self.get_span_type_specific_features(corpus_train, t)
-            X_train_merged = self.merge_features(X_train, X_train2)
-
+            X_train_merged = X_train
+            # X_train_merged = self.merge_features(X_train, X_train2)
             self.logger.info("Optimizing classifier for class " + str(t))
             target_t = self.get_binary_labels(corpus_train, t, use_bio=True)
             self.logger.debug(target_t)
+
+            X_train_merged, target_t = self.shuffle(X_train_merged, target_t)
+
             if dev_corpus is None:
                 aps = True
                 c2v = 0.1
@@ -87,7 +101,8 @@ class SpanClassifier:
             else:
                 # get features for dev corpus
                 X_dev2 = self.get_span_type_specific_features(dev_corpus, t)
-                X_dev_merged = self.merge_features(X_dev, X_dev2)
+                X_dev_merged = X_dev
+                # X_dev_merged = self.merge_features(X_dev, X_dev2)
                 y_dev = self.get_binary_labels(dev_corpus, t, use_bio=True)
                 # optimize on dev
                 best_f1 = -1.0
@@ -123,7 +138,7 @@ class SpanClassifier:
                             all_possible_states=aps,
                             c2=c2v,
                         )
-                        crf.fit(X_train, target_t)
+                        crf.fit(X_train_merged, target_t)
 
                         micro_f1 = self.evaluate(crf, X_dev_merged, y_dev)
                         if micro_f1 > best_f1:
@@ -133,6 +148,24 @@ class SpanClassifier:
                         if micro_f1 == 1.0:  # cannot get better
                             stopTraining = True
                 self.logger.info("Best setup: " + str(best_setup))
+                with open("best_parameters_span", 'a') as out:
+                    out.write(t.name)
+                    out.write("\n")
+                    for k, v in best_setup.items():
+                        out.write(str(k) + "\t" + str(v) + "\n")
+                    out.write("\n")
+                self.logger.info("Retraining best setup with all available data")
+                X_train_all = X_train_merged + X_dev_merged
+                target_all = target_t + y_dev
+                X_train_all, target_all = self.shuffle(X_train_all, target_all)
+                crf = CRF(
+                        algorithm="l2sgd",
+                        all_possible_transitions=True,
+                        all_possible_states=best_setup["aps"],
+                        c2=best_setup["c2v"]
+                )
+                crf.fit(X_train_all, target_all)
+                self.target2classifier[t.name] = crf
 
     def evaluate(
         self, classifier: CRF, X_dev: List[List[Features]], y_dev: List[List[str]]
@@ -165,10 +198,15 @@ class SpanClassifier:
         X_test = self.get_features(corpus)
         predictions = {}
         for t in self.target_span_types:
+            self.logger.debug(t)
             X_test2 = self.get_span_type_specific_features(corpus, t)
-            X_test_merged = self.merge_features(X_test, X_test2)
-
+            X_test_merged = X_test
+            # X_test_merged = self.merge_features(X_test, X_test2)
             y_pred = self.target2classifier[t.name].predict(X_test_merged)
+            for X_item, y_item in zip(X_test_merged, y_pred):
+                self.logger.debug(X_item)
+                self.logger.debug(y_item)
+            self.logger.debug("-----")
             predictions[t.name] = y_pred
         self.prepare_results(predictions, corpus)
 
@@ -207,7 +245,9 @@ class SpanClassifier:
     ) -> List[List[str]]:
         binary_labels = []
         for instance in corpus.instances:
-            instance_tokens = list(word_tokenizer.span_tokenize(instance.text))
+            instance_text = instance.text.replace('"', "'")
+            instance.text = instance_text
+            instance_tokens = list(word_tokenizer.span_tokenize(instance_text))
             spans_for_tokens = self.get_spans_for_tokens(instance_tokens, instance)
 
             # do binarization based on given target label t
@@ -252,7 +292,9 @@ class SpanClassifier:
     ) -> List[List[Features]]:
         feature_list = []
         for instance in corpus.instances:
-            words = list(word_tokenizer.tokenize(instance.text))
+            instance_text = instance.text.replace('"', "'")
+            instance.text = instance_text
+            words = list(word_tokenizer.tokenize(instance_text))
             instance_feature_list = []
             for word in words:
                 features: Features = {}
@@ -299,7 +341,9 @@ class SpanClassifier:
     def get_features(self, corpus: Corpus) -> List[List[Features]]:
         feature_list = []
         for instance in corpus.instances:
-            token_spans = list(word_tokenizer.span_tokenize(instance.text))
+            instance_text = instance.text.replace('"', "'")
+            instance.text = instance_text
+            token_spans = list(word_tokenizer.span_tokenize(instance_text))
             instance_feature_list = []
             for i, token in enumerate(token_spans):
                 features = self.token_features(instance, token, "word")
@@ -317,11 +361,20 @@ class SpanClassifier:
                 if i < len(token_spans) - 1:
                     next_token = token_spans[i + 1]
                     features.update(
-                        self.token_features(instance, next_token, "-1:word")
+                        self.token_features(instance, next_token, "+1:word")
                     )
                 else:
                     features["EOS"] = True
+
+                # for key in features:
+                #    if isinstance(features[key], bool):
+                #        if features[key]:
+                #            features[key] = "1"
+                #        else:
+                #            features[key] = "0"
+
                 instance_feature_list.append(features)
+
             feature_list.append(instance_feature_list)
         return feature_list
 
@@ -355,12 +408,18 @@ class SpanClassifier:
         self, predictions: Dict[str, List[List[str]]], corpus: Corpus
     ) -> None:
         for i, instance in enumerate(corpus.instances):
-            instance_tokens = list(word_tokenizer.span_tokenize(instance.text))
+            instance_text = instance.text.replace('"', "'")
+            instance.text = instance_text
+            instance_tokens = list(word_tokenizer.span_tokenize(instance_text))
             for target_span_type in self.target_span_types:
                 instance_predictions = predictions[target_span_type.name][i]
                 current_span_left: Optional[int] = None
                 current_span_right = 0
                 for token, label in zip(instance_tokens, instance_predictions):
+                    if label != "O":
+                        d_msg = "token: " + str(token) + "\t" + str(instance.text[token[0]:token[1]])
+                        d_msg += "\t" + "label: " + str(target_span_type)
+                        self.logger.debug(d_msg)
                     if current_span_left is not None and label in "BO":
                         instance.new_span(
                             target_span_type,
@@ -372,3 +431,9 @@ class SpanClassifier:
                         current_span_left = token[0]
                     if label in "BI":
                         current_span_right = token[1]
+                if current_span_left is not None:  # otherwise spans at end of window are neglected
+                    instance.new_span(
+                            target_span_type,
+                            current_span_left,
+                            current_span_right,
+                    )

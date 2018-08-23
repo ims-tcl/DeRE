@@ -5,7 +5,7 @@ import random
 
 from itertools import chain, combinations, product
 from operator import mul
-from typing import Optional, Dict, Tuple, List, Set, Any, Union, cast
+from typing import Optional, Dict, Tuple, List, Set, Any, Union, cast, Sequence
 
 import networkx as nx
 import numpy as np
@@ -20,7 +20,8 @@ from sklearn.metrics import (
     confusion_matrix,
 )
 from sklearn.externals import joblib
-from scipy.sparse import hstack, csr_matrix, spmatrix
+from scipy.sparse import hstack, csr_matrix, spmatrix, vstack
+from sklearn.utils import shuffle
 
 from dere import Result
 from dere.corpus import Corpus, Instance, Frame, Span, Slot, Filler
@@ -33,6 +34,7 @@ Edge = Tuple[FrameType, SlotType]
 Label = Union[str, Edge]
 Relation = Tuple[SpanPair, Label]
 Arc = Tuple[FrameType, SlotType]
+_ArrayLike = Union[List, np.ndarray, spmatrix]
 
 
 class SlotClassifier:
@@ -64,8 +66,14 @@ class SlotClassifier:
             "plausible relations for slot classifier: " + str(self.plausible_relations)
         )
 
+    def shuffle(self, X: _ArrayLike, y: _ArrayLike) -> Tuple[_ArrayLike, _ArrayLike]:
+        X_shuffled, y_shuffled = shuffle(X, y, random_state=1111)
+        return X_shuffled, y_shuffled
+
     def train(self, corpus: Corpus, dev_corpus: Optional[Corpus] = None) -> None:
-        x, y, _ = self.get_features_and_labels(corpus, is_train=True)
+        x_tmp, y_tmp, _ = self.get_features_and_labels(corpus, is_train=True)
+
+        x, y = self.shuffle(x_tmp, y_tmp)
 
         if dev_corpus is None:
             self.cls = LinearSVC()
@@ -85,7 +93,15 @@ class SlotClassifier:
                     best_f1 = micro_f1
             assert best_cls is not None
             self.logger.info("Best c: " + str(best_c))
-            self.cls = best_cls
+            self.logger.info("Retraining on all data")
+            dev_x, dev_y, _ = self.get_features_and_labels(dev_corpus, is_train=False)
+            assert(isinstance(x, spmatrix))
+            train_x_all_tmp = vstack([x, dev_x])
+            self.logger.info("train_x_all shape: " + str(train_x_all_tmp.shape))
+            train_y_all_tmp = np.concatenate([y, dev_y])
+            train_x_all, train_y_all = self.shuffle(train_x_all_tmp, train_y_all_tmp)
+            self.cls = LinearSVC(C=best_c, class_weight="balanced")
+            self.cls.fit(train_x_all, train_y_all)
 
     def predict(self, corpus: Corpus) -> None:
         x, _, span_pairs = self.get_features_and_labels(corpus)
@@ -111,6 +127,15 @@ class SlotClassifier:
                     [((anchor_span, filler_span), predicted_label)]
                 )
         for instance_results in results_by_instance:
+            # self.logger.debug("XXX results before decoding XXX\n")
+            for ir in instance_results:
+                span1, span2 = ir[0]
+                relation = ir[1]
+                msg = "BEFORE DECODING: " + "\t" + span1.text + "\t"
+                msg += span2.text + "\t" + str(relation)
+                self.logger.debug(msg)
+            # self.logger.debug(instance_results)
+            # self.logger.debug("XXX end results before decoding XXX")
             instance_results = self.filter_results(instance_results)
             self.generate_frames(instance_results)
 
@@ -227,7 +252,10 @@ class SlotClassifier:
         sequence_words_list: List[Any] = []
         prev_status = -1
         for i, instance in enumerate(corpus.instances):
-            doc, graph, idx2word, edge2dep = self.preprocess_text(instance.text)
+            instance_text = instance.text.replace('"', "'")
+            doc, graph, idx2word, edge2dep = self.preprocess_text(instance_text)
+            for span in instance.spans:
+                self.logger.debug("SPANS: " + str(span.text) + "\t" + str(span.span_type))
             relations = self.get_relations(instance)
             for (span1, span2), relation in relations:
                 span1_list.append(span1)
@@ -260,7 +288,8 @@ class SlotClassifier:
                 sequence_words_list,
             )
 
-        self.logger.info("creating features for train set")
+        set_name = "train" if is_train else "dev"
+        self.logger.info("creating features for " + str(set_name) + " set")
         x = self.features_from_instance(
             span1_list,
             span2_list,
@@ -275,8 +304,11 @@ class SlotClassifier:
 
         y = np.array([self.labels.index(label) for label in labels])
 
-        # bincount_y = np.bincount(y)
-        # self.logger.debug("counts: " + str(bincount_y))
+        bincount_y = np.bincount(y)
+        self.logger.info(str(bincount_y))
+        # for l_idx in range(len(labels)):
+        #    self.logger.info(str(labels[l_idx]) + "\t" + str(bincount_y[l_idx]))
+
         return x, y, list(zip(span1_list, span2_list))
 
     def get_relations(self, instance: Instance) -> List[Relation]:
@@ -478,14 +510,23 @@ class SlotClassifier:
         )
         f_sequence_words = self.cv_sequence_text.transform(sequence_words_list)
 
+        self.logger.debug("f_sp1_text")
         self.logger.debug(f_sp1_text.shape)
+        self.logger.debug("f_sp2_text")
         self.logger.debug(f_sp2_text.shape)
+        self.logger.debug("f_sp1_label")
         self.logger.debug(f_sp1_label.shape)
+        self.logger.debug("f_sp2_label")
         self.logger.debug(f_sp2_label.shape)
+        self.logger.debug("f_shortest_path_distance")
         self.logger.debug(f_shortest_path.shape)
+        self.logger.debug("f_sequence_distance")
         self.logger.debug(f_sequence_distance.shape)
+        self.logger.debug("f_sequence_words")
         self.logger.debug(f_sequence_words.shape)
+        self.logger.debug("f_shortest_path_words")
         self.logger.debug(f_shortest_path_words.shape)
+        self.logger.debug("f_path_deps")
         self.logger.debug(f_path_deps.shape)
 
         X_feats = hstack(
