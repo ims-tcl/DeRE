@@ -125,6 +125,10 @@ def _predict(
     corpus = input_corpus_io.load(corpus_path, False)
 
     model.predict(corpus)
+
+    if not os.path.isdir(output_path):
+        os.makedirs(os.path.dirname(output_path), exist_ok=True)
+
     output_corpus_io.dump(corpus, output_path)
 
 

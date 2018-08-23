@@ -5,7 +5,8 @@ import random
 
 from itertools import chain, combinations, product
 from operator import mul
-from typing import Optional, Dict, Tuple, List, Set, Any, Union, cast
+from typing import Optional, Dict, Tuple, List, Set, Any, Union, cast, Sequence
+from sklearn import _ArrayLike
 
 import networkx as nx
 import numpy as np
@@ -21,6 +22,7 @@ from sklearn.metrics import (
 )
 from sklearn.externals import joblib
 from scipy.sparse import hstack, csr_matrix, spmatrix, vstack
+from sklearn.utils import shuffle
 
 from dere import Result
 from dere.corpus import Corpus, Instance, Frame, Span, Slot, Filler
@@ -64,8 +66,14 @@ class SlotClassifier:
             "plausible relations for slot classifier: " + str(self.plausible_relations)
         )
 
+    def shuffle(self, X: _ArrayLike, y: _ArrayLike) -> Tuple[_ArrayLike, _ArrayLike]:
+        X_shuffled, y_shuffled = shuffle(X, y, random_state=1111)
+        return X_shuffled, y_shuffled
+
     def train(self, corpus: Corpus, dev_corpus: Optional[Corpus] = None) -> None:
-        x, y, _ = self.get_features_and_labels(corpus, is_train=True)
+        x_tmp, y_tmp, _ = self.get_features_and_labels(corpus, is_train=True)
+
+        x, y = self.shuffle(x_tmp, y_tmp)
 
         if dev_corpus is None:
             self.cls = LinearSVC()
@@ -87,14 +95,13 @@ class SlotClassifier:
             self.logger.info("Best c: " + str(best_c))
             self.logger.info("Retraining on all data")
             dev_x, dev_y, _ = self.get_features_and_labels(dev_corpus, is_train=False)
-            self.logger.info("x shape: " + str(x.shape))
-            self.logger.info("dev_x shape: " + str(dev_x.shape))
-            train_x_all = vstack([x, dev_x])
-            self.logger.info("train_x_all shape: " + str(train_x_all.shape))
-            train_y_all = np.concatenate([y, dev_y])
+            assert(isinstance(x, spmatrix))
+            train_x_all_tmp = vstack([x, dev_x])
+            self.logger.info("train_x_all shape: " + str(train_x_all_tmp.shape))
+            train_y_all_tmp = np.concatenate([y, dev_y])
+            train_x_all, train_y_all = self.shuffle(train_x_all_tmp, train_y_all_tmp)
             self.cls = LinearSVC(C=best_c, class_weight="balanced")
             self.cls.fit(train_x_all, train_y_all)
-            # self.cls = best_cls
 
     def predict(self, corpus: Corpus) -> None:
         x, _, span_pairs = self.get_features_and_labels(corpus)
@@ -281,7 +288,8 @@ class SlotClassifier:
                 sequence_words_list,
             )
 
-        self.logger.info("creating features for train set")
+        set_name = "train" if is_train else "dev"
+        self.logger.info("creating features for " + str(set_name) + " set")
         x = self.features_from_instance(
             span1_list,
             span2_list,

@@ -3,6 +3,7 @@
 import copy
 import logging
 import string
+import random
 from typing import Dict, List, Tuple, Set, Optional, Union, cast
 
 from mypy_extensions import TypedDict
@@ -17,8 +18,6 @@ from dere.corpus import Corpus, Instance, Span
 from sklearn.externals import joblib
 
 word_tokenizer = TreebankWordTokenizer()
-
-# import pickle
 
 Features = Dict[str, Union[str, bool]]
 
@@ -47,6 +46,16 @@ class SpanClassifier:
                 self.target_span_types.remove(t)
         # initialize everything necessary
 
+    def shuffle(self, X: List, y: List) -> Tuple[List, List]:
+        indices = [i for i in range(len(X))]
+        # using shuffle instead of permutation to reproduce set from old code
+        # TODO: change to permutation as this is more elegant
+        random.seed(1111)
+        random.shuffle(indices)
+        X_shuffled = [X[i] for i in indices]
+        y_shuffled = [y[i] for i in indices]
+        return X_shuffled, y_shuffled
+
     def train(
         self,
         corpus_train: Corpus,
@@ -64,15 +73,16 @@ class SpanClassifier:
             "target span types: " + str([st.name for st in self.target_span_types])
         )
 
-        to_dump = {}
-
         for t in self.target_span_types:
             X_train2 = self.get_span_type_specific_features(corpus_train, t)
-            X_train_merged = X_train  # self.merge_features(X_train, X_train2)
+            X_train_merged = X_train
             # X_train_merged = self.merge_features(X_train, X_train2)
             self.logger.info("Optimizing classifier for class " + str(t))
             target_t = self.get_binary_labels(corpus_train, t, use_bio=True)
             self.logger.debug(target_t)
+
+            X_train_merged, target_t = self.shuffle(X_train_merged, target_t)
+
             if dev_corpus is None:
                 aps = True
                 c2v = 0.1
@@ -91,7 +101,7 @@ class SpanClassifier:
             else:
                 # get features for dev corpus
                 X_dev2 = self.get_span_type_specific_features(dev_corpus, t)
-                X_dev_merged = X_dev  # self.merge_features(X_dev, X_dev2)
+                X_dev_merged = X_dev
                 # X_dev_merged = self.merge_features(X_dev, X_dev2)
                 y_dev = self.get_binary_labels(dev_corpus, t, use_bio=True)
                 # optimize on dev
@@ -99,7 +109,6 @@ class SpanClassifier:
                 Setup = TypedDict("Setup", {"aps": bool, "c2v": float})
                 best_setup: Setup = {"c2v": 0.001, "aps": True}
                 stopTraining = False
-                to_dump[t] = [X_train_merged, target_t]
                 for aps in [True, False]:
                     if stopTraining:
                         break
@@ -148,6 +157,7 @@ class SpanClassifier:
                 self.logger.info("Retraining best setup with all available data")
                 X_train_all = X_train_merged + X_dev_merged
                 target_all = target_t + y_dev
+                X_train_all, target_all = self.shuffle(X_train_all, target_all)
                 crf = CRF(
                         algorithm="l2sgd",
                         all_possible_transitions=True,
@@ -156,10 +166,6 @@ class SpanClassifier:
                 )
                 crf.fit(X_train_all, target_all)
                 self.target2classifier[t.name] = crf
-
-        # with open("new_code_span_train", 'wb') as dump_me:
-        #    pickle.dump(to_dump, dump_me)
-        # exit()
 
     def evaluate(
         self, classifier: CRF, X_dev: List[List[Features]], y_dev: List[List[str]]
@@ -191,21 +197,17 @@ class SpanClassifier:
             return []
         X_test = self.get_features(corpus)
         predictions = {}
-        to_dump = {}
         for t in self.target_span_types:
             self.logger.debug(t)
             X_test2 = self.get_span_type_specific_features(corpus, t)
-            X_test_merged = X_test  # self.merge_features(X_test, X_test2)
+            X_test_merged = X_test
             # X_test_merged = self.merge_features(X_test, X_test2)
-            to_dump[t.name] = [X_test_merged]
             y_pred = self.target2classifier[t.name].predict(X_test_merged)
             for X_item, y_item in zip(X_test_merged, y_pred):
                 self.logger.debug(X_item)
                 self.logger.debug(y_item)
             self.logger.debug("-----")
             predictions[t.name] = y_pred
-        # with open("new_code_span_predict", 'wb') as dump_me:
-        #    pickle.dump(to_dump, dump_me)
         self.prepare_results(predictions, corpus)
 
     def get_spans_for_tokens(
