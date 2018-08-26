@@ -4,6 +4,7 @@ import copy
 import logging
 import string
 import random
+import os
 from typing import Dict, List, Tuple, Set, Optional, Union, cast
 
 from mypy_extensions import TypedDict
@@ -26,7 +27,7 @@ class SpanClassifier:
     def __init__(
         self,
         spec: TaskSpecification,
-        gazetteer_filename: str = "dere/models/_baseline/training_gazetteer",
+        gazetteer_filename: str = os.path.join(os.path.dirname(__file__), "training_gazetteer")
     ) -> None:
         self.target_span_types = list(spec.span_types)
         self.gazetteer: Dict[str, Set[str]] = {}
