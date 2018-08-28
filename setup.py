@@ -1,4 +1,7 @@
 from setuptools import setup, find_packages
+from setuptools.command.develop import develop
+from setuptools.command.install import install
+from subprocess import check_call
 
 setup(
     name='dere',
@@ -14,16 +17,19 @@ setup(
         'mypy == 0.620',
         'mypy-extensions == 0.4.1',
         'click == 6.7',
+        'numpy >= 1.14.5',
         'scipy == 1.1.0',
         'scikit-learn == 0.19.2',
         'sklearn-crfsuite == 0.3.6',
         'nltk == 3.3',
         'networkx == 2.1',
-        'spacy == 2.0.12'
+        'spacy == 2.0.12',
     ],
-    dependency_links=[
-        'git://github.com/numpy/numpy-stubs.git'
-    ],
+    entry_points={
+        'console_scripts': [
+            'dere = dere.__main__:cli'
+        ]
+    },
     zip_safe=False,
     include_package_data=True,
 )
