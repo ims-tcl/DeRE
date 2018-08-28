@@ -11,38 +11,34 @@ class BIOSpanModel(Model):
         x, ys = self._corpus_xys(corpus)
         if dev_corpus is not None:
             dev_x, dev_ys = self._corpus_xys(dev_corpus)
-            for span_type in self.spec.span_types:
-                self.sequence_train(span_type, x, ys[span_type], dev_x, dev_ys[span_type])
+            self.sequence_train(x, ys, dev_x, dev_ys)
         else:
-            for span_type in self.spec.span_types:
-                self.sequence_train(span_type, x, ys[span_type])
+            self.sequence_train(x, ys)
 
     def predict(self, corpus: Corpus) -> None:
         x, _ = self._corpus_xys(corpus)
+        predictions = self.sequence_predict(x)
         for span_type in self.spec.span_types:
-            predictions = self.sequence_predict(span_type, x)
-            for instance, prediction in zip(corpus.instances, predictions):
+            for instance, prediction in zip(corpus.instances, predictions[span_type]):
                 token_spans = self.span_tokenize(instance.text)
                 self._make_spans_from_labels(instance, span_type, prediction)
 
     """
-    Train the sequence labeler for the given span type. If development data is provided, it may be used to
-    tune hyperparameters. Subclasses should implement this method.
+    Train the sequence labeler. If development data is provided, it may be used to tune hyperparameters.
+    Subclasses should implement this method.
 
     Args:
-        span_type: The span type whose classifier is to be trained.
         x: Classifier input -- a list of token sequences.
-        y: Gold-standard labels -- a list of BIO sequences.
+        y: Gold-standard labels -- for each span type, a list of BIO sequences.
         x_dev: If provided, classifier input for the development set.
         y_dev: If provided, BIO labels for the development set.
     """
     def sequence_train(
         self,
-        span_type: SpanType,
         x: List[List[str]],
-        y: List[List[str]],
+        ys: Dict[SpanType, List[List[str]]],
         x_dev: Optional[List[List[str]]] = None,
-        y_dev: Optional[List[List[str]]] = None,
+        ys_dev: Optional[Dict[SpanType, List[List[str]]]] = None,
     ) -> None:
         ...
 
@@ -52,13 +48,12 @@ class BIOSpanModel(Model):
     method.
 
     Args:
-        span_type: The span type for which predictions should be generated.
         x: Classifier input -- a list of token sequences.
 
     Returns:
-        A list of BIO label sequences.
+        A list of BIO label sequences for each span type.
     """
-    def sequence_predict(self, span_type: SpanType, x: List[List[str]]) -> List[List[str]]:
+    def sequence_predict(self, x: List[List[str]]) -> Dict[SpanType, List[List[str]]]:
         ...
 
     """
@@ -112,7 +107,7 @@ class BIOSpanModel(Model):
 
     def _corpus_xys(self, corpus: Corpus) -> Tuple[List[List[str]], Dict[SpanType, List[List[str]]]]:
         x: List[List[str]] = []
-        ys: Dict[SpanType, List[List[str]]] = {}
+        ys: Dict[SpanType, List[List[str]]] = {span_type: [] for span_type in self.spec.span_types}
         for instance in corpus.instances:
             instance_x, instance_ys = self._instance_xys(instance)
             x.append(instance_x)
