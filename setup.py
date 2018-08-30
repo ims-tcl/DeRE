@@ -24,6 +24,7 @@ setup(
         'nltk == 3.3',
         'networkx == 2.1',
         'spacy == 2.0.12',
+        'dill',
     ],
     entry_points={
         'console_scripts': [

@@ -151,11 +151,10 @@ def _evaluate(corpus_path: str, model_path: str, corpus_format: str) -> None:
         model = pickle.load(f)
 
     corpus_io = CORPUS_IOS[corpus_format](model.spec)
-    predictions = corpus_io.load(corpus_path, False)
+    corpus = corpus_io.load(corpus_path, False)
     gold = corpus_io.load(corpus_path, True)
 
-    model.predict(predictions)
-    result = model.eval(gold, predictions)
+    result = model.evaluate(corpus, gold)
     print(result)  # or something smarter
 
 

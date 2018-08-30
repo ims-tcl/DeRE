@@ -16,5 +16,5 @@ class Model:
     def predict(self, corpus: Corpus) -> None:
         ...
 
-    def eval(self, corpus: Corpus, predicted: Corpus) -> Result:
+    def evaluate(self, corpus: Corpus, gold: Corpus) -> Result:
         ...  # here there might actually be a sensible default implementation
