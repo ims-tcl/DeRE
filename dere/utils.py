@@ -14,7 +14,6 @@ class GridSearchFactory:
 '''
 
 
-
 def _grid_search_class(
     decoratee_class: Type[Model],
         param_name: str,
