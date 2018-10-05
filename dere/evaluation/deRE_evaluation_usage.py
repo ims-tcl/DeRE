@@ -81,14 +81,14 @@ def read_a2_file(
                     if e_item == "":
                         continue
                     a_type, a_id = e_item.split(":")
-                    a_type = re.sub(r"^Theme[2-6]$", "Theme", a_type)
+                    a_type = re.sub(r"^target[2-6]$", "target", a_type)
                     if a_id in equiv:
                         a_id = equiv[a_id]
                     new_args.append(a_type + ":" + a_id)
                 frame_annotations[cur_id] = [t_type, t_id, new_args]
             elif re.search(r"^M", cur_id):
                 cur_type, aid = exp.split(" ")
-                frame_annotations[cur_id] = [cur_type, " ", ["Theme:" + aid]]
+                frame_annotations[cur_id] = [cur_type, " ", ["target:" + aid]]
             elif re.search(r"^\*", cur_id):
                 exp_splitted = exp.split(" ")
                 rel = exp_splitted[0]
@@ -358,6 +358,13 @@ def eq_class(
             aclass = make_soft_classes(aclass)
             gclass = make_soft_classes(gclass)
         return aclass == gclass
+    elif aid in answers_span:
+        aclass = answers_span[aid][0]
+        gclass = golds_span[gid][0]
+        if do_soft_class:
+            aclass = make_soft_classes(aclass)
+            gclass = make_soft_classes(gclass)
+        return aclass == gclass
     return False
 
 
@@ -388,9 +395,9 @@ def eq_args(
     ge_args = golds_frame[gid][2]
 
     if do_soft_args:
-        while not re.search(r"^Theme\:", ae_args[-1]):
+        while not re.search(r"^target\:", ae_args[-1]):
             ae_args.pop(-1)
-        while not re.search(r"^Theme\:", ge_args[-1]):
+        while not re.search(r"^target\:", ge_args[-1]):
             ge_args.pop(-1)
 
     if len(ge_args) != len(ae_args):
@@ -792,7 +799,7 @@ def cli():
 def deRE_evaluation(
     hypo: str, gold: str, verbose: bool, soft_span: bool, soft_overlap_span: bool
 ) -> None:
-    files = glob.glob(hypo + "/*.a2") + glob.glob(hypo + "/*.ann")
+    files = glob.glob(hypo + "/*.ann")
     gold_dir = gold
     do_soft_class = False
     do_soft_args = False
@@ -801,16 +808,11 @@ def deRE_evaluation(
     if verbose:
         logging.basicConfig(level=logging.INFO)
 
-    target_eclass = [
-        "Gene_expression",
-        "Transcription",
-        "Protein_catabolism",
-        "Phosphorylation",
-        "Localization",
+    target_class = [
+        "positive",
+        "negative",
+        "neutral",
     ]
-    target_rclass = ["Regulation", "Positive_regulation", "Negative_regulation"]
-    target_mclass = ["Negation", "Speculation"]
-    target_class = target_eclass + ["Binding"] + target_rclass + target_mclass
 
     tnum_gold = {}  # counts the number of gold events across files
     tnum_matched_gold = {}  # counts the number of matches of gold events across files
@@ -833,7 +835,7 @@ def deRE_evaluation(
 
     for f in files:
         f_dir, f_base = os.path.split(f)
-        pmid = re.sub(r"(\S+)\.(a2|ann)", "\\1", f_base)
+        pmid = re.sub(r"(\S+)\.ann", "\\1", f_base)
         events_in_text = {}
         a1_annotations = {}
         gold = []
@@ -940,10 +942,6 @@ def deRE_evaluation(
     tnum_matched_answer_span_value = 0
 
     for cl in target_class:  # TODO: get target classes from specification!
-        if cl == "Negation":
-            continue
-        if cl == "Speculation":
-            continue
         report(
             cl,
             tnum_gold_span[cl],
@@ -970,7 +968,7 @@ def deRE_evaluation(
     tnum_answer_value = 0
     tnum_matched_answer_value = 0
 
-    for cl in target_eclass:
+    for cl in target_class:
         report(
             cl,
             tnum_gold[cl],
@@ -984,79 +982,11 @@ def deRE_evaluation(
         tnum_matched_answer_value += tnum_matched_answer[cl]
 
     report(
-        "=[SVT-TOTAL]=",
+        "=[EVENT-TOTAL]=",
         tnum_gold_value,
         tnum_matched_gold_value,
         tnum_answer_value,
         tnum_matched_answer_value,
-    )
-    print("----------------------------------------------")
-
-    for cl in ["Binding"]:
-        report(
-            cl,
-            tnum_gold[cl],
-            tnum_matched_gold[cl],
-            tnum_answer[cl],
-            tnum_matched_answer[cl],
-        )
-        tnum_gold_value += tnum_gold[cl]
-        tnum_matched_gold_value += tnum_matched_gold[cl]
-        tnum_answer_value += tnum_answer[cl]
-        tnum_matched_answer_value += tnum_matched_answer[cl]
-
-    report(
-        "=[EVT-TOTAL]=",
-        tnum_gold_value,
-        tnum_matched_gold_value,
-        tnum_answer_value,
-        tnum_matched_answer_value,
-    )
-    print("----------------------------------------------")
-
-    gnum_gold_value = tnum_gold_value
-    gnum_matched_gold_value = tnum_matched_gold_value
-    gnum_answer_value = tnum_answer_value
-    gnum_matched_answer_value = tnum_matched_answer_value
-
-    tnum_gold_value = 0
-    tnum_matched_gold_value = 0
-    tnum_answer_value = 0
-    tnum_matched_answer_value = 0
-
-    for cl in target_rclass:
-        report(
-            cl,
-            tnum_gold[cl],
-            tnum_matched_gold[cl],
-            tnum_answer[cl],
-            tnum_matched_answer[cl],
-        )
-        tnum_gold_value += tnum_gold[cl]
-        tnum_matched_gold_value += tnum_matched_gold[cl]
-        tnum_answer_value += tnum_answer[cl]
-        tnum_matched_answer_value += tnum_matched_answer[cl]
-
-    report(
-        "=[REG-TOTAL]=",
-        tnum_gold_value,
-        tnum_matched_gold_value,
-        tnum_answer_value,
-        tnum_matched_answer_value,
-    )
-    print("----------------------------------------------")
-
-    gnum_gold_value += tnum_gold_value
-    gnum_matched_gold_value += tnum_matched_gold_value
-    gnum_answer_value += tnum_answer_value
-    gnum_matched_answer_value += tnum_matched_answer_value
-
-    report(
-        "=[ALL-TOTAL]",
-        gnum_gold_value,
-        gnum_matched_gold_value,
-        gnum_answer_value,
-        gnum_matched_answer_value,
     )
     print("----------------------------------------------")
 

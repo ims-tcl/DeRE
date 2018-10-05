@@ -22,6 +22,8 @@ CORPUS_IOS = {"BRAT": BRATCorpusIO, "CQSA": CQSACorpusIO}
 
 MODELS = {"baseline": BaselineModel, "nop": NOPModel}
 
+logging.basicConfig(stream=sys.stdout, level=logging.INFO)
+
 
 @click.group()
 @click.option("--verbosity", default="INFO")
