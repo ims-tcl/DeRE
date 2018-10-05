@@ -23,16 +23,6 @@ class BIOSpanModel(Model):
                 token_spans = self.span_tokenize(instance.text)
                 self._make_spans_from_labels(instance, span_type, prediction)
 
-    """
-    Train the sequence labeler. If development data is provided, it may be used to tune hyperparameters.
-    Subclasses should implement this method.
-
-    Args:
-        x: Classifier input -- a list of token sequences.
-        y: Gold-standard labels -- for each span type, a list of BIO sequences.
-        x_dev: If provided, classifier input for the development set.
-        y_dev: If provided, BIO labels for the development set.
-    """
     def sequence_train(
         self,
         x: List[List[str]],
@@ -40,48 +30,58 @@ class BIOSpanModel(Model):
         x_dev: Optional[List[List[str]]] = None,
         ys_dev: Optional[Dict[SpanType, List[List[str]]]] = None,
     ) -> None:
+        """
+        Train the sequence labeler. If development data is provided, it may be used to tune hyperparameters.
+        Subclasses should implement this method.
+
+        Args:
+            x: Classifier input -- a list of token sequences.
+            y: Gold-standard labels -- for each span type, a list of BIO sequences.
+            x_dev: If provided, classifier input for the development set.
+            y_dev: If provided, BIO labels for the development set.
+        """
         ...
 
-    """
-    Generate BIO predictions for the given span type, provided input data. This should generally only be
-    called after train() has been callled for the corresponding span type. Subclasses should implement this
-    method.
-
-    Args:
-        x: Classifier input -- a list of token sequences.
-
-    Returns:
-        A list of BIO label sequences for each span type.
-    """
     def sequence_predict(self, x: List[List[str]]) -> Dict[SpanType, List[List[str]]]:
+        """
+        Generate BIO predictions for the given span type, provided input data. This should generally only be
+        called after train() has been callled for the corresponding span type. Subclasses should implement
+        this method.
+
+        Args:
+            x: Classifier input -- a list of token sequences.
+
+        Returns:
+            A list of BIO label sequences for each span type.
+        """
         ...
 
-    """
-    Tokenize a piece of text. Subclasses should implement this method.
-
-    Args:
-        text: The text to tokenize.
-
-    Returns:
-        A list of (left, right) index pairs describing token boundaries.  Each token consists of the text
-        between left (inclusive) and right (exclusive). Tokens should be non-overlapping (but possibly with
-        gaps between tokens) and monotonic.
-    """
     def span_tokenize(self, text: str) -> List[Tuple[int, int]]:
+        """
+        Tokenize a piece of text. Subclasses should implement this method.
+
+        Args:
+            text: The text to tokenize.
+
+        Returns:
+            A list of (left, right) index pairs describing token boundaries.  Each token consists of the text
+            between left (inclusive) and right (exclusive). Tokens should be non-overlapping (but possibly
+            with gaps between tokens) and monotonic.
+        """
         ...
 
-    """
-    Normalize a token before providing it to the sequence labeler. The default implementation returns the
-    token unchanged. Subclasses may override this method to e.g. lowercase all tokens before they are sent
-    to the sequence labeler.
-
-    Args:
-        token: The token text to be normalized.
-
-    Returns:
-        The normalized token.
-    """
     def normalize_token(self, token: str) -> str:
+        """
+        Normalize a token before providing it to the sequence labeler. The default implementation returns the
+        token unchanged. Subclasses may override this method to e.g. lowercase all tokens before they are sent
+        to the sequence labeler.
+
+        Args:
+            token: The token text to be normalized.
+
+        Returns:
+            The normalized token.
+        """
         return token
 
     def _instance_xys(self, instance: Instance) -> Tuple[List[str], Dict[SpanType, List[str]]]:
