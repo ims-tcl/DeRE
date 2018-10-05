@@ -10,6 +10,7 @@ from typing import Optional, Dict, Tuple, List, Set, Any, Union, cast, Sequence
 import networkx as nx
 import numpy as np
 import spacy
+import spacy.cli
 
 from spacy.tokens import Doc
 from sklearn.svm import LinearSVC
@@ -27,7 +28,14 @@ from dere import Result
 from dere.corpus import Corpus, Instance, Frame, Span, Slot, Filler
 from dere.taskspec import TaskSpecification, FrameType, SpanType, SlotType
 
-nlp = spacy.load("en")
+try:
+    nlp = spacy.load("en")
+except OSError:
+    # This feels dirty :(
+    # A better approach would be to depend upon the model as a module and let dependency handle it.
+    # Unfortunately, those modules are not on PyPi, and so installation would be more complicated
+    spacy.cli.download("en")
+    nlp = spacy.load("en")
 
 SpanPair = Tuple[Span, Span]
 Edge = Tuple[FrameType, SlotType]

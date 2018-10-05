@@ -32,13 +32,11 @@ class CQSACorpusIO(CorpusIO):
         doc_id, _ = path.rsplit(".", 1)
         tree = ET.parse(path)
         root = tree.getroot()
-        corpus.instances.append(self._construct_instance(corpus, root, doc_id))
-        """
+        # self._construct_instance(corpus, root, doc_id)
+
         for child in root.getchildren():
             if child.tag in ["HEADING", "PARAGRAPH"]:
-                instance = self._construct_instance(child)
-                corpus.instances.append(instance)
-        """
+                instance = self._construct_instance(corpus, child, doc_id)
 
     def _construct_instance(self, corpus: Corpus, element: ET.Element, doc_id: str) -> Instance:
         instance = corpus.new_instance("", doc_id)
@@ -87,5 +85,6 @@ class CQSACorpusIO(CorpusIO):
                     for attrib, value in element.attrib.items():
                         slot = frame.slot_lookup(attrib)
                         if slot is not None:
-                            filler = ids[value]
-                            slot.add(filler)
+                            if value in ids:
+                                filler = ids[value]
+                                slot.add(filler)
