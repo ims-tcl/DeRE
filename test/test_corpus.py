@@ -49,12 +49,9 @@ def test_span_bad_values():
 
 
 def test_span_text():
-    s = Span(
-        "spantype",
-        20,
-        24,
-        MockInstance(text="It should capture ->this<-, nothing else"),
-    )
+    c = Corpus()
+    i = c.new_instance("It should capture ->this<-, nothing else", "docid")
+    s = i.new_span("spantype", 20, 24)
     assert s.text == "this"
 
 
