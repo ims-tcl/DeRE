@@ -2,7 +2,8 @@ import click
 import pickle
 import logging
 import importlib
-from typing import Optional
+import json
+from typing import Optional, Dict, Any, Type
 
 # path hackery to get imports working as intended
 import sys
@@ -13,14 +14,27 @@ path = os.path.join(path, "..")  # noqa
 sys.path.insert(0, path)  # noqa
 
 from dere.corpus_io import CorpusIO, BRATCorpusIO, CQSACorpusIO
-from dere.models import BaselineModel, NOPModel
+from dere.models import Model, BaselineModel, NOPModel
 from dere.corpus import Corpus
 import dere.taskspec
+from dere.taskspec import TaskSpecification
 
 
 CORPUS_IOS = {"BRAT": BRATCorpusIO, "CQSA": CQSACorpusIO}
 
-MODELS = {"baseline": BaselineModel, "nop": NOPModel}
+MODELS: Dict[str, Type[Model]] = {"baseline": BaselineModel, "nop": NOPModel}
+
+
+def instantiate_model(name: str, task_spec: TaskSpecification, model_spec: Model.ModelSpec) -> Model:
+    try:
+        return MODELS[name](task_spec, model_spec)
+    except KeyError:
+        module, _, class_ = name.rpartition(".")
+        model_module = importlib.import_module(module)
+        model_class = getattr(model_module, class_)
+        model = model_class(task_spec, model_spec)
+        assert isinstance(model, Model)
+        return model
 
 
 @click.group()
@@ -31,23 +45,24 @@ def cli(verbosity: str) -> None:
 
 @cli.command()
 @click.option("--model", default="baseline")
-@click.option("--spec", required=True)
+@click.option("--task-spec", required=True)
+@click.option("--model-spec", required=True)
 @click.option("--outfile", default="bare_model.pkl")
-def build(model: str, spec: str, outfile: str) -> None:
-    _build(model, spec, outfile)
+def build(model: str, task_spec: str, model_spec: str, outfile: str) -> None:
+    _build(model, task_spec, model_spec, outfile)
 
 
-def _build(model_name: str, spec_path: str, out_path: str) -> None:
-    print("building with", model_name, spec_path, out_path)
-    spec = dere.taskspec.load_from_xml(spec_path)
-    try:
-        model = MODELS[model_name](spec)
-    except KeyError:
-        module, _, class_ = model_name.rpartition(".")
-        model_module = importlib.import_module(module)
-        model = getattr(model_module, class_)(spec)
+def _build(model_name: str, task_spec_path: str, model_spec_path: str, out_path: str) -> None:
+    print("building with", model_name, task_spec_path, model_spec_path, out_path)
+    task_spec = dere.taskspec.load_from_xml(task_spec_path)
+    with open(model_spec_path) as sf:
+        model_spec = json.load(sf)
+    model = instantiate_model(model_name, task_spec, model_spec)
+    model.initialize()
     with open(out_path, "wb") as f:
-        pickle.dump(model, f)
+        pickle.dump((model_name, task_spec, model_spec), f)
+        # dump the model's (initialized) parameters
+        model.dump(f)
 
 
 @cli.command()
@@ -78,9 +93,11 @@ def _train(
 ) -> None:
     print("training with", corpus_path, model_path, out_path)
     with open(model_path, "rb") as f:
-        model = pickle.load(f)
+        (model_name, task_spec, model_spec) = pickle.load(f)
+        model = instantiate_model(model_name, task_spec, model_spec)
+        model.load(f)
 
-    corpus_io = CORPUS_IOS[corpus_format](model.spec)
+    corpus_io = CORPUS_IOS[corpus_format](task_spec)
     corpus = corpus_io.load(corpus_path, load_gold=True)
 
     dev_corpus: Optional[Corpus] = None

@@ -1,4 +1,6 @@
 # Author: Laura
+from __future__ import annotations
+
 import copy
 import logging
 import random
@@ -6,6 +8,7 @@ import random
 from itertools import chain, combinations, product
 from operator import mul
 from typing import Optional, Dict, Tuple, List, Set, Any, Union, cast, Sequence
+from mypy_extensions import TypedDict
 
 import networkx as nx
 import numpy as np
@@ -27,6 +30,7 @@ from sklearn.utils import shuffle
 from dere import Result
 from dere.corpus import Corpus, Instance, Frame, Span, Slot, Filler
 from dere.taskspec import TaskSpecification, FrameType, SpanType, SlotType
+from dere.models import Model
 
 try:
     nlp = spacy.load("en")
@@ -45,16 +49,22 @@ Arc = Tuple[FrameType, SlotType]
 _ArrayLike = Union[List, np.ndarray, spmatrix]
 
 
-class SlotClassifier:
-    def __init__(self, spec: TaskSpecification) -> None:
+class SlotClassifier(Model):
+    class ModelSpec(TypedDict, total=False):
+        seed: int
+
+    def __init__(self, task_spec: TaskSpecification, model_spec: SlotClassifier.ModelSpec) -> None:
+        super().__init__(task_spec, model_spec)
         self.logger = logging.getLogger(__name__)
-        self._spec = spec
-        random.seed(98765)
+        if 'seed' in model_spec:
+            random.seed(model_spec['seed'])
+        else:
+            random.seed(98765)
         # Find our plausible relations from the spec
         self.plausible_relations: Dict[Tuple[SpanType, SpanType], List[Edge]] = {}
         labels: Set[Any] = {"Nothing"}
         # For every span type that triggers a frame
-        for frame_type in spec.frame_types:
+        for frame_type in task_spec.frame_types:
             anchor_slot_type = self._frame_type_anchor(frame_type)
             for anchor_span_type in anchor_slot_type.types:
                 if not isinstance(anchor_span_type, SpanType):
@@ -94,7 +104,7 @@ class SlotClassifier:
                 self.cls = LinearSVC(C=c_param, class_weight="balanced")
                 self.cls.fit(x, y)
                 self.logger.info("current c: " + str(c_param))
-                micro_f1 = self.evaluate(dev_corpus)
+                micro_f1 = self._eval(dev_corpus)
                 if micro_f1 > best_f1:
                     best_c = c_param
                     best_cls = copy.deepcopy(self.cls)
@@ -207,7 +217,7 @@ class SlotClassifier:
                             new_frame.remove()
                             break
 
-    def evaluate(self, corpus: Corpus) -> float:
+    def _eval(self, corpus: Corpus) -> float:
 
         """This function evaluates only the slot classifier, assuming
         the correct spans in gold"""

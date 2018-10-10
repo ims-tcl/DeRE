@@ -18,7 +18,7 @@ class BIOSpanModel(Model):
     def predict(self, corpus: Corpus) -> None:
         x, _ = self._corpus_xys(corpus)
         predictions = self.sequence_predict(x)
-        for span_type in self.spec.span_types:
+        for span_type in self.task_spec.span_types:
             for instance, prediction in zip(corpus.instances, predictions[span_type]):
                 token_spans = self.span_tokenize(instance.text)
                 self._make_spans_from_labels(instance, span_type, prediction)
@@ -87,7 +87,7 @@ class BIOSpanModel(Model):
     def _instance_xys(self, instance: Instance) -> Tuple[List[str], Dict[SpanType, List[str]]]:
         token_spans = self.span_tokenize(instance.text)
         tokens = [self.normalize_token(instance.text[l:r]) for (l, r) in token_spans]
-        labels = {span_type: ["O"] * len(tokens) for span_type in self.spec.span_types}
+        labels = {span_type: ["O"] * len(tokens) for span_type in self.task_spec.span_types}
         for span in instance.spans:
             type_specific_labels = labels[span.span_type]
             span_begun = False
@@ -107,11 +107,11 @@ class BIOSpanModel(Model):
 
     def _corpus_xys(self, corpus: Corpus) -> Tuple[List[List[str]], Dict[SpanType, List[List[str]]]]:
         x: List[List[str]] = []
-        ys: Dict[SpanType, List[List[str]]] = {span_type: [] for span_type in self.spec.span_types}
+        ys: Dict[SpanType, List[List[str]]] = {span_type: [] for span_type in self.task_spec.span_types}
         for instance in corpus.instances:
             instance_x, instance_ys = self._instance_xys(instance)
             x.append(instance_x)
-            for span_type in self.spec.span_types:
+            for span_type in self.task_spec.span_types:
                 ys[span_type].append(instance_ys[span_type])
         return x, ys
 

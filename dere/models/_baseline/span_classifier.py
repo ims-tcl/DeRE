@@ -1,11 +1,13 @@
 # Author: Heike, Sean
+from __future__ import annotations
 
 import copy
 import logging
 import string
 import random
 import os
-from typing import Dict, List, Tuple, Set, Optional, Union, cast
+from typing import Dict, List, Tuple, Set, Optional, Union, Any, cast
+from mypy_extensions import TypedDict
 
 from mypy_extensions import TypedDict
 from sklearn_crfsuite import CRF, metrics
@@ -15,6 +17,7 @@ from nltk.tokenize import TreebankWordTokenizer
 
 from dere.taskspec import TaskSpecification, SpanType
 from dere.corpus import Corpus, Instance, Span
+from dere.models import Model
 
 from sklearn.externals import joblib
 
@@ -23,21 +26,25 @@ word_tokenizer = TreebankWordTokenizer()
 Features = Dict[str, Union[str, bool]]
 
 
-class SpanClassifier:
-    def __init__(
-        self,
-        spec: TaskSpecification,
-        gazetteer_filename: str = os.path.join(os.path.dirname(__file__), "training_gazetteer")
-    ) -> None:
-        self.target_span_types = list(spec.span_types)
+class SpanClassifier(Model):
+    class ModelSpec(TypedDict, total=False):
+        gazeteer: str
+
+    def __init__(self, task_spec: TaskSpecification, model_spec: SpanClassifier.ModelSpec) -> None:
+        super().__init__(task_spec, model_spec)
+        self.target_span_types = list(task_spec.span_types)
         self.gazetteer: Dict[str, Set[str]] = {}
-        self.read_gazetteer(gazetteer_filename)
+        try:
+            gazetteer_filename = model_spec['gazeteer']
+            self.read_gazetteer(gazetteer_filename)
+        except KeyError:
+            pass
         self.logger = logging.getLogger(__name__)
         self.target2classifier: Dict[str, CRF] = {}
         self.ps = PorterStemmer()
         # @Sean: TODO: read from spec which spans are given (if any)
 
-        given_span_types = [spec.type_lookup("Protein")]
+        given_span_types = [task_spec.type_lookup("Protein")]
         given_span_types = [gst for gst in given_span_types if gst is not None]
         for given_span_type in given_span_types:
             assert type(given_span_type) is SpanType
@@ -141,7 +148,7 @@ class SpanClassifier:
                         )
                         crf.fit(X_train_merged, target_t)
 
-                        micro_f1 = self.evaluate(crf, X_dev_merged, y_dev)
+                        micro_f1 = self._eval(crf, X_dev_merged, y_dev)
                         if micro_f1 > best_f1:
                             self.target2classifier[t.name] = crf
                             best_setup = cur_setup
@@ -168,7 +175,7 @@ class SpanClassifier:
                 crf.fit(X_train_all, target_all)
                 self.target2classifier[t.name] = crf
 
-    def evaluate(
+    def _eval(
         self, classifier: CRF, X_dev: List[List[Features]], y_dev: List[List[str]]
     ) -> float:
         y_pred = classifier.predict(X_dev)
