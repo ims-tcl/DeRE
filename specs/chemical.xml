@@ -6,12 +6,12 @@
     <span name="Disease" predict="True"/>
   </spans>
   <frames>
-    <frame name="Direct">
-      <slot name="Chemical" types="span:Chemical" cardinality="1"/>
+    <frame name="Directly_related_chemical">
+      <slot name="Directly_related_chemical" types="span:Chemical" cardinality="1"/>
       <slot name="Disease" types="span:Disease" cardinality="1"/>
     </frame>
-    <frame name="Indirect">
-      <slot name="Chemical" types="span:Chemical" cardinality="1"/>
+    <frame name="Indirectly_related_chemical">
+      <slot name="Indirectly_related_chemical" types="span:Chemical" cardinality="1"/>
       <slot name="Disease" types="span:Disease" cardinality="1"/>
     </frame>
   </frames>
