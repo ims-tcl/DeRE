@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE deREschema SYSTEM "dere.dtd">
+<deREschema name="Chemical Disease Relation" version="0.01" author="Hendrik Schuff">
+  <spans>
+    <span name="Chemical" predict="True"/>
+    <span name="Disease" predict="True"/>
+  </spans>
+  <frames>
+    <frame name="Direct">
+      <slot name="Chemical" types="span:Chemical" cardinality="1"/>
+      <slot name="Disease" types="span:Disease" cardinality="1"/>
+    </frame>
+    <frame name="Indirect">
+      <slot name="Chemical" types="span:Chemical" cardinality="1"/>
+      <slot name="Disease" types="span:Disease" cardinality="1"/>
+    </frame>
+  </frames>
+</deREschema>
