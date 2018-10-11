@@ -4,10 +4,11 @@ from __future__ import annotations
 import copy
 import logging
 import random
+import pickle
 
 from itertools import chain, combinations, product
 from operator import mul
-from typing import Optional, Dict, Tuple, List, Set, Any, Union, cast, Sequence
+from typing import Optional, Dict, Tuple, List, Set, Any, Union, cast, Sequence, IO
 from mypy_extensions import TypedDict
 
 import networkx as nx
@@ -50,16 +51,11 @@ _ArrayLike = Union[List, np.ndarray, spmatrix]
 
 
 class SlotClassifier(Model):
-    class ModelSpec(TypedDict, total=False):
-        seed: int
-
-    def __init__(self, task_spec: TaskSpecification, model_spec: SlotClassifier.ModelSpec) -> None:
-        super().__init__(task_spec, model_spec)
+    def __init__(self, task_spec: TaskSpecification, model_spec: Dict[str, Any]) -> None:
+        self.task_spec = task_spec
+        self.model_spec = model_spec
         self.logger = logging.getLogger(__name__)
-        if 'seed' in model_spec:
-            random.seed(model_spec['seed'])
-        else:
-            random.seed(98765)
+
         # Find our plausible relations from the spec
         self.plausible_relations: Dict[Tuple[SpanType, SpanType], List[Edge]] = {}
         labels: Set[Any] = {"Nothing"}
@@ -83,6 +79,21 @@ class SlotClassifier(Model):
         self.logger.debug(
             "plausible relations for slot classifier: " + str(self.plausible_relations)
         )
+
+    def initialize(self) -> None:
+        if 'seed' in self.model_spec:
+            random.seed(self.model_spec['seed'])
+        else:
+            random.seed(98765)
+        self.cls: Optional[LinearSVC] = None
+
+    def dump(self, f: IO[bytes]) -> None:
+        pickle.dump(random.getstate(), f)
+        pickle.dump(self.cls, f)
+
+    def load(self, f: IO[bytes]) -> None:
+        random.setstate(pickle.load(f))
+        self.cls = pickle.load(f)
 
     def shuffle(self, X: _ArrayLike, y: _ArrayLike) -> Tuple[_ArrayLike, _ArrayLike]:
         X_shuffled, y_shuffled = shuffle(X, y, random_state=1111)
@@ -122,6 +133,7 @@ class SlotClassifier(Model):
             self.cls.fit(train_x_all, train_y_all)
 
     def predict(self, corpus: Corpus) -> None:
+        assert self.cls is not None
         x, _, span_pairs = self.get_features_and_labels(corpus)
         if x.shape[0] == 0:
             # edge case -- we have no span pairs to classify
@@ -221,6 +233,7 @@ class SlotClassifier(Model):
 
         """This function evaluates only the slot classifier, assuming
         the correct spans in gold"""
+        assert self.cls is not None
 
         x, y_gold, _ = self.get_features_and_labels(corpus)
         y_pred = self.cls.predict(x)

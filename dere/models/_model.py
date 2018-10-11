@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from typing import Optional, Dict, Any, IO
-from mypy_extensions import TypedDict
 import pickle
 
 from dere.corpus import Corpus
@@ -10,10 +9,7 @@ from dere import Result
 
 
 class Model:
-    class ModelSpec(TypedDict, total=False):
-        ...
-
-    def __init__(self, task_spec: TaskSpecification, model_spec: Model.ModelSpec = {}) -> None:
+    def __init__(self, task_spec: TaskSpecification, model_spec: Dict[str, Any] = {}) -> None:
         self.task_spec = task_spec
         self.model_spec = model_spec
 
@@ -31,7 +27,10 @@ class Model:
         Args:
             f: The file to write to.
         '''
-        pickle.dump(self.__dict__, f)
+        d = dict(self.__dict__)
+        del d['task_spec']
+        del d['model_spec']
+        pickle.dump(d, f)
 
     def load(self, f: IO[bytes]) -> None:
         '''
@@ -41,7 +40,7 @@ class Model:
         Args:
             f: The file to read from.
         '''
-        self.__dict__ = pickle.load(f)
+        self.__dict__.update(pickle.load(f))
 
     # only minimal logic here, things that all models (might) need
 

@@ -27,10 +27,7 @@ Features = Dict[str, Union[str, bool]]
 
 
 class SpanClassifier(Model):
-    class ModelSpec(TypedDict, total=False):
-        gazeteer: str
-
-    def __init__(self, task_spec: TaskSpecification, model_spec: SpanClassifier.ModelSpec) -> None:
+    def __init__(self, task_spec: TaskSpecification, model_spec: Dict[str, Any]) -> None:
         super().__init__(task_spec, model_spec)
         self.target_span_types = list(task_spec.span_types)
         self.gazetteer: Dict[str, Set[str]] = {}

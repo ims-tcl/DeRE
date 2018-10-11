@@ -25,16 +25,31 @@ CORPUS_IOS = {"BRAT": BRATCorpusIO, "CQSA": CQSACorpusIO}
 MODELS: Dict[str, Type[Model]] = {"baseline": BaselineModel, "nop": NOPModel}
 
 
-def instantiate_model(name: str, task_spec: TaskSpecification, model_spec: Model.ModelSpec) -> Model:
-    try:
-        return MODELS[name](task_spec, model_spec)
-    except KeyError:
-        module, _, class_ = name.rpartition(".")
-        model_module = importlib.import_module(module)
-        model_class = getattr(model_module, class_)
-        model = model_class(task_spec, model_spec)
-        assert isinstance(model, Model)
+def instantiate_model(name: str, task_spec: TaskSpecification, model_spec: Dict[str, Any]) -> Model:
+    if "." not in name:
+        name = "dere.models.%s" % name
+    module, _, class_ = name.rpartition(".")
+    model_module = importlib.import_module(module)
+    model_class = getattr(model_module, class_)
+    model = model_class(task_spec, model_spec)
+    assert isinstance(model, Model)
+    return model
+
+
+def load_model(path: str) -> Model:
+    with open(path, 'rb') as f:
+        breakpoint()
+        model_name, task_spec, model_spec = pickle.load(f)
+        model = instantiate_model(model_name, task_spec, model_spec)
+        model.load(f)
         return model
+
+
+def save_model(model: Model, path: str) -> None:
+    model_name = "%s.%s" % (model.__module__, model.__class__.__name__)
+    with open(path, 'wb') as f:
+        pickle.dump((model_name, model.task_spec, model.model_spec), f)
+        model.dump(f)
 
 
 @click.group()
@@ -44,7 +59,7 @@ def cli(verbosity: str) -> None:
 
 
 @cli.command()
-@click.option("--model", default="baseline")
+@click.option("--model", default="BaselineModel")
 @click.option("--task-spec", required=True)
 @click.option("--model-spec", required=True)
 @click.option("--outfile", default="bare_model.pkl")
@@ -57,12 +72,10 @@ def _build(model_name: str, task_spec_path: str, model_spec_path: str, out_path:
     task_spec = dere.taskspec.load_from_xml(task_spec_path)
     with open(model_spec_path) as sf:
         model_spec = json.load(sf)
+    breakpoint()
     model = instantiate_model(model_name, task_spec, model_spec)
     model.initialize()
-    with open(out_path, "wb") as f:
-        pickle.dump((model_name, task_spec, model_spec), f)
-        # dump the model's (initialized) parameters
-        model.dump(f)
+    save_model(model, out_path)
 
 
 @cli.command()
@@ -92,12 +105,9 @@ def _train(
     corpus_split: Optional[str],
 ) -> None:
     print("training with", corpus_path, model_path, out_path)
-    with open(model_path, "rb") as f:
-        (model_name, task_spec, model_spec) = pickle.load(f)
-        model = instantiate_model(model_name, task_spec, model_spec)
-        model.load(f)
+    model = load_model(model_path)
 
-    corpus_io = CORPUS_IOS[corpus_format](task_spec)
+    corpus_io = CORPUS_IOS[corpus_format](model.task_spec)
     corpus = corpus_io.load(corpus_path, load_gold=True)
 
     dev_corpus: Optional[Corpus] = None
@@ -108,8 +118,7 @@ def _train(
         corpus, dev_corpus = corpus.split(ratio)
 
     model.train(corpus, dev_corpus)
-    with open(out_path, "wb") as f:
-        pickle.dump(model, f)
+    save_model(model, out_path)
 
 
 @cli.command()
@@ -136,13 +145,12 @@ def _predict(
     output_path: str,
 ) -> None:
     print("predicting with", corpus_path, model_path)
-    with open(model_path, "rb") as f:
-        model = pickle.load(f)
+    model = load_model(model_path)
 
-    input_corpus_io = CORPUS_IOS[corpus_format](model.spec)
+    input_corpus_io = CORPUS_IOS[corpus_format](model.task_spec)
     if output_format is None:
         output_format = corpus_format
-    output_corpus_io = CORPUS_IOS[output_format](model.spec)
+    output_corpus_io = CORPUS_IOS[output_format](model.task_spec)
 
     corpus = input_corpus_io.load(corpus_path, False)
 
@@ -164,10 +172,9 @@ def evaluate(corpus_path: str, model_path: str, corpus_format: str) -> None:
 
 def _evaluate(corpus_path: str, model_path: str, corpus_format: str) -> None:
     print("evaluating with", corpus_path, model_path)
-    with open(model_path, "rb") as f:
-        model = pickle.load(f)
+    model = load_model(model_path)
 
-    corpus_io = CORPUS_IOS[corpus_format](model.spec)
+    corpus_io = CORPUS_IOS[corpus_format](model.task_spec)
     corpus = corpus_io.load(corpus_path, False)
     gold = corpus_io.load(corpus_path, True)
 
