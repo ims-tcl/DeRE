@@ -76,8 +76,8 @@ class SpanClassifier:
 
         for t in self.target_span_types:
             X_train2 = self.get_span_type_specific_features(corpus_train, t)
-            X_train_merged = X_train
-            # X_train_merged = self.merge_features(X_train, X_train2)
+            #X_train_merged = X_train
+            X_train_merged = self.merge_features(X_train, X_train2)
             self.logger.info("Optimizing classifier for class " + str(t))
             target_t = self.get_binary_labels(corpus_train, t, use_bio=True)
             self.logger.debug(target_t)
@@ -102,8 +102,8 @@ class SpanClassifier:
             else:
                 # get features for dev corpus
                 X_dev2 = self.get_span_type_specific_features(dev_corpus, t)
-                X_dev_merged = X_dev
-                # X_dev_merged = self.merge_features(X_dev, X_dev2)
+                #X_dev_merged = X_dev
+                X_dev_merged = self.merge_features(X_dev, X_dev2)
                 y_dev = self.get_binary_labels(dev_corpus, t, use_bio=True)
                 # optimize on dev
                 best_f1 = -1.0
@@ -201,8 +201,8 @@ class SpanClassifier:
         for t in self.target_span_types:
             self.logger.debug(t)
             X_test2 = self.get_span_type_specific_features(corpus, t)
-            X_test_merged = X_test
-            # X_test_merged = self.merge_features(X_test, X_test2)
+            #X_test_merged = X_test
+            X_test_merged = self.merge_features(X_test, X_test2)
             y_pred = self.target2classifier[t.name].predict(X_test_merged)
             for X_item, y_item in zip(X_test_merged, y_pred):
                 self.logger.debug(X_item)
