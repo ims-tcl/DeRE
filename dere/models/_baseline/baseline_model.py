@@ -14,10 +14,14 @@ from .slot_classifier import SlotClassifier
 
 
 class BaselineModel(Model):
-    def __init__(self, task_spec: TaskSpecification, model_spec: Dict[str, Any]) -> None:
+    def __init__(
+            self, task_spec: TaskSpecification, model_spec: Dict[str, Any],
+            span_classifier: Dict[str, Any],
+            slot_classifier: Dict[str, Any]
+    ) -> None:
         super().__init__(task_spec, model_spec)
-        self._span_classifier = SpanClassifier(task_spec, model_spec.get('span_classifier', {}))
-        self._slot_classifier = SlotClassifier(task_spec, model_spec.get('slot_classifier', {}))
+        self._span_classifier = SpanClassifier(task_spec, model_spec, **span_classifier)
+        self._slot_classifier = SlotClassifier(task_spec, model_spec, **slot_classifier)
 
     def train(self, corpus: Corpus, dev_corpus: Optional[Corpus] = None) -> None:
         self._span_classifier.train(corpus, dev_corpus=dev_corpus)

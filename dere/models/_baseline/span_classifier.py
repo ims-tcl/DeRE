@@ -27,15 +27,16 @@ Features = Dict[str, Union[str, bool]]
 
 
 class SpanClassifier(Model):
-    def __init__(self, task_spec: TaskSpecification, model_spec: Dict[str, Any]) -> None:
+
+    def __init__(
+            self, task_spec: TaskSpecification, model_spec: Dict[str, Any],
+            gazetteer: Optional[str] = None
+    ) -> None:
         super().__init__(task_spec, model_spec)
         self.target_span_types = list(task_spec.span_types)
         self.gazetteer: Dict[str, Set[str]] = {}
-        try:
-            gazetteer_filename = model_spec['gazeteer']
-            self.read_gazetteer(gazetteer_filename)
-        except KeyError:
-            pass
+        if gazetteer is not None:
+            self.read_gazetteer(gazetteer)
         self.logger = logging.getLogger(__name__)
         self.target2classifier: Dict[str, CRF] = {}
         self.ps = PorterStemmer()

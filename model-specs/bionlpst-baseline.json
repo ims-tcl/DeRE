@@ -1,0 +1,10 @@
+{
+    "model_type": "BaselineModel",
+    "params": {
+        "span_classifier": {
+            "gazetteer": "/home/sean/dev/dere/data/training_gazetteer"
+        },
+        "slot_classifier": {
+        }
+    }
+}

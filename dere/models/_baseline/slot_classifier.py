@@ -51,11 +51,10 @@ _ArrayLike = Union[List, np.ndarray, spmatrix]
 
 
 class SlotClassifier(Model):
-    def __init__(self, task_spec: TaskSpecification, model_spec: Dict[str, Any]) -> None:
-        self.task_spec = task_spec
-        self.model_spec = model_spec
+    def __init__(self, task_spec: TaskSpecification, model_spec: Dict[str, Any], seed: int = 98765) -> None:
+        super().__init__(task_spec, model_spec)
+        self.seed = seed
         self.logger = logging.getLogger(__name__)
-
         # Find our plausible relations from the spec
         self.plausible_relations: Dict[Tuple[SpanType, SpanType], List[Edge]] = {}
         labels: Set[Any] = {"Nothing"}
@@ -81,10 +80,7 @@ class SlotClassifier(Model):
         )
 
     def initialize(self) -> None:
-        if 'seed' in self.model_spec:
-            random.seed(self.model_spec['seed'])
-        else:
-            random.seed(98765)
+        random.seed(self.seed)
         self.cls: Optional[LinearSVC] = None
 
     def dump(self, f: IO[bytes]) -> None:

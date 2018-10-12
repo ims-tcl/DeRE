@@ -22,33 +22,31 @@ from dere.taskspec import TaskSpecification
 
 CORPUS_IOS = {"BRAT": BRATCorpusIO, "CQSA": CQSACorpusIO}
 
-MODELS: Dict[str, Type[Model]] = {"baseline": BaselineModel, "nop": NOPModel}
 
-
-def instantiate_model(name: str, task_spec: TaskSpecification, model_spec: Dict[str, Any]) -> Model:
-    if "." not in name:
-        name = "dere.models.%s" % name
-    module, _, class_ = name.rpartition(".")
+def instantiate_model(task_spec: TaskSpecification, model_spec: Dict[str, Any]) -> Model:
+    model_type = model_spec['model_type']
+    if "." not in model_type:
+        model_type = "dere.models.%s" % model_type
+    module, _, class_ = model_type.rpartition(".")
     model_module = importlib.import_module(module)
     model_class = getattr(model_module, class_)
-    model = model_class(task_spec, model_spec)
+    params = model_spec.get('params', {})
+    model = model_class(task_spec, model_spec, **params)
     assert isinstance(model, Model)
     return model
 
 
 def load_model(path: str) -> Model:
     with open(path, 'rb') as f:
-        breakpoint()
-        model_name, task_spec, model_spec = pickle.load(f)
-        model = instantiate_model(model_name, task_spec, model_spec)
+        task_spec, model_spec = pickle.load(f)
+        model = instantiate_model(task_spec, model_spec)
         model.load(f)
         return model
 
 
 def save_model(model: Model, path: str) -> None:
-    model_name = "%s.%s" % (model.__module__, model.__class__.__name__)
     with open(path, 'wb') as f:
-        pickle.dump((model_name, model.task_spec, model.model_spec), f)
+        pickle.dump((model.task_spec, model.model_spec), f)
         model.dump(f)
 
 
@@ -59,21 +57,20 @@ def cli(verbosity: str) -> None:
 
 
 @cli.command()
-@click.option("--model", default="BaselineModel")
 @click.option("--task-spec", required=True)
 @click.option("--model-spec", required=True)
 @click.option("--outfile", default="bare_model.pkl")
-def build(model: str, task_spec: str, model_spec: str, outfile: str) -> None:
-    _build(model, task_spec, model_spec, outfile)
+def build(task_spec: str, model_spec: str, outfile: str) -> None:
+    _build(task_spec, model_spec, outfile)
 
 
-def _build(model_name: str, task_spec_path: str, model_spec_path: str, out_path: str) -> None:
-    print("building with", model_name, task_spec_path, model_spec_path, out_path)
+def _build(task_spec_path: str, model_spec_path: str, out_path: str) -> None:
+    print("building with", task_spec_path, model_spec_path, out_path)
     task_spec = dere.taskspec.load_from_xml(task_spec_path)
     with open(model_spec_path) as sf:
         model_spec = json.load(sf)
-    breakpoint()
-    model = instantiate_model(model_name, task_spec, model_spec)
+
+    model = instantiate_model(task_spec, model_spec)
     model.initialize()
     save_model(model, out_path)
 

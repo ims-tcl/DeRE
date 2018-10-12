@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Optional, Dict, Any, IO
+from typing import Optional, Dict, Any, IO, Union, Type, cast
 import pickle
 
 from dere.corpus import Corpus
@@ -9,7 +9,7 @@ from dere import Result
 
 
 class Model:
-    def __init__(self, task_spec: TaskSpecification, model_spec: Dict[str, Any] = {}) -> None:
+    def __init__(self, task_spec: TaskSpecification, model_spec: Dict[str, Any]) -> None:
         self.task_spec = task_spec
         self.model_spec = model_spec
 
