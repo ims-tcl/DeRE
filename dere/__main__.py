@@ -34,14 +34,22 @@ CORPUS_IOS = {"BRAT": BRATCorpusIO, "CQSA": CQSACorpusIO}
 
 MODELS = {"baseline": BaselineModel, "nop": NOPModel}
 
-logging.basicConfig(stream=sys.stdout, level=logging.INFO)
-
 
 @click.group()
-@click.option("--verbosity", default="INFO")
-def cli(verbosity: str) -> None:
-    logging.basicConfig(stream=sys.stdout, level=getattr(logging, verbosity))
-
+@click.option("--verbose", "-v", is_flag=True, help="Show debug info")
+@click.option("--quiet", "-q", count=True, help="Do less logging. Can be provided multiple times.")
+def cli(verbose: bool, quiet: int) -> None:
+    if verbose and quiet:
+        raise click.BadParameter("Options --verbose and --quiet are mutually exclusive.")
+    if quiet > 2:
+        quiet = 2
+    # Calculation of verbosity level: verbose --> -1 (DEBUG), quiet --> 1 or 2
+    #                                 neither verbose nor quiet --> 0
+    val = -verbose + quiet
+    # indices:                                                   -1
+    #                  0            1              2             (3)
+    verbosity = [logging.INFO, logging.WARN, logging.ERROR, logging.DEBUG][val]
+    logging.basicConfig(stream=sys.stderr, level=verbosity)
 
 @cli.command()
 @click.option("--model", default="baseline")
