@@ -1,21 +1,33 @@
-import click
-import pickle
-import logging
 import importlib
+import logging
+import os
+import pickle
+import sys
+import warnings
 from typing import Optional
 
-# path hackery to get imports working as intended
-import sys
-import os
 
+import click
+# path hackery to get imports working as intended
 path = os.path.dirname(sys.modules[__name__].__file__)  # noqa
 path = os.path.join(path, "..")  # noqa
 sys.path.insert(0, path)  # noqa
 
+# filter warnings from importing sklearn and numpy.
+# sklearn specifically forces warnings to be displayed, which we don't like.
+# https://github.com/scikit-learn/scikit-learn/issues/2531
+def warn(*args, **kwargs):
+    pass
+old_warn = warnings.showwarning
+warnings.showwarning = warn
+
+import dere.taskspec
 from dere.corpus_io import CorpusIO, BRATCorpusIO, CQSACorpusIO
 from dere.models import BaselineModel, NOPModel
 from dere.corpus import Corpus
-import dere.taskspec
+
+# restore ability to use warnings
+warnings.showwarning = old_warn
 
 
 CORPUS_IOS = {"BRAT": BRATCorpusIO, "CQSA": CQSACorpusIO}
