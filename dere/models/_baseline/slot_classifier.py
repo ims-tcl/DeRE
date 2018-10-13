@@ -27,6 +27,7 @@ from sklearn.utils import shuffle
 from dere import Result
 from dere.corpus import Corpus, Instance, Frame, Span, Slot, Filler
 from dere.taskspec import TaskSpecification, FrameType, SpanType, SlotType
+from dere.utils import progressify
 
 try:
     nlp = spacy.load("en")
@@ -93,8 +94,8 @@ class SlotClassifier:
             best_f1 = -1.0
             best_c = 0.0
             best_cls = None
-            self.logger.info("[SlotClassifier] Starting grid search")
-            for c_param in [0.01, 0.03, 0.1, 0.3, 1.0, 3.0, 10.0, 30.0, 100]:
+            self.logger.info("[SlotClassifier] Starting grid search...")
+            for c_param in progressify([0.01, 0.03, 0.1, 0.3, 1.0, 3.0, 10.0, 30.0, 100]):
                 self.cls = LinearSVC(C=c_param, class_weight="balanced", max_iter=10000)
                 self.cls.fit(x, y)
                 self.logger.debug("[SlotClassifier] current c: " + str(c_param))
@@ -104,8 +105,9 @@ class SlotClassifier:
                     best_cls = copy.deepcopy(self.cls)
                     best_f1 = micro_f1
             assert best_cls is not None
+            self.logger.info("[SlotClassifier] Grid search done")
             self.logger.debug("[SlotClassifier] Best c: " + str(best_c))
-            self.logger.info("[SlotClassifier] Training on all training data")
+            self.logger.info("[SlotClassifier] Training on all training data...")
             dev_x, dev_y, _ = self.get_features_and_labels(dev_corpus, is_train=False)
             assert(isinstance(x, spmatrix))
             train_x_all_tmp = vstack([x, dev_x])
@@ -114,7 +116,7 @@ class SlotClassifier:
             train_x_all, train_y_all = self.shuffle(train_x_all_tmp, train_y_all_tmp)
             self.cls = LinearSVC(C=best_c, class_weight="balanced", max_iter=10000)
             self.cls.fit(train_x_all, train_y_all)
-            self.logger.info("[SlotClassifier] Finished training")
+            self.logger.info("[SlotClassifier] Training done")
 
     def predict(self, corpus: Corpus) -> None:
         x, _, span_pairs = self.get_features_and_labels(corpus)
@@ -264,8 +266,8 @@ class SlotClassifier:
         idx2word_list: List[Dict[int, str]] = []
         edge2dep_list = []
         sequence_words_list: List[Any] = []
-        prev_status = -1
-        for i, instance in enumerate(corpus.instances):
+        self.logger.info("[SlotClassifier] Getting features/labels...")
+        for i, instance in enumerate(progressify(corpus.instances, "getting features")):
             instance_text = instance.text.replace('"', "'")
             doc, graph, idx2word, edge2dep = self.preprocess_text(instance_text)
             relations = self.get_relations(instance)
@@ -278,16 +280,12 @@ class SlotClassifier:
                 edge2dep_list.append(edge2dep)
                 sequence_words_list.append(self.build_sequence(doc, span1, span2))
                 labels.append(relation)
-            status = int(100 * i / len(corpus.instances))
-            if prev_status != status and status % 10 == 0:
-                self.logger.debug("[SlotClassifier] preprocessing %f%%" % (status))
-            prev_status = status
 
-        self.logger.debug("[SlotClassifier] preprocessing %f%%" % (100))
+        self.logger.info("[SlotClassifier] Getting features/labels done")
         # TOmaybeDO:
         # possibly give a list of all words in this
         # (list(iwl.values() for iwl in idx2word_list))
-        self.logger.info("[SlotClassifier] fitting count vectorizer")
+        self.logger.info("[SlotClassifier] Fitting count vectorizer...")
         # this is only for training
         if is_train:
             self.fit_count_vectorizers(
@@ -299,9 +297,10 @@ class SlotClassifier:
                 edge2dep_list,
                 sequence_words_list,
             )
+        self.logger.info("[SlotClassifier] Fitting count vectorizer done")
 
         set_name = "train" if is_train else "dev"
-        self.logger.info("[SlotClassifier] creating features for " + str(set_name) + " set")
+        self.logger.info("[SlotClassifier] Creating features for " + str(set_name) + " set...")
         x = self.features_from_instance(
             span1_list,
             span2_list,
@@ -311,6 +310,7 @@ class SlotClassifier:
             edge2dep_list,
             sequence_words_list,
         )
+        self.logger.info("[SlotClassifier] Creating features for " + str(set_name) + " set done")
 
         y = np.array([self.labels.index(label) for label in labels])
 
@@ -406,17 +406,21 @@ class SlotClassifier:
             edge2dep_list,
         )
 
+        self.logger.debug("[SlotClassifier] Fitting count vectorizer (text)...")
         self.cv_text = CountVectorizer()
         span_text_list = [sp.text for sp in span1_list + span2_list]
         self.cv_text.fit(span_text_list + shortest_path_list)
 
+        self.logger.debug("[SlotClassifier] Fitting count vectorizer (labels)...")
         self.cv_labels = CountVectorizer()
         span_label_list = [sp.span_type.name for sp in span1_list + span2_list]
         self.cv_labels.fit(span_label_list)
 
+        self.logger.debug("[SlotClassifier] Fitting count vectorizer (dep_words)...")
         self.cv_deps_words = CountVectorizer(ngram_range=(2, 2))  # type: ignore
         self.cv_deps_words.fit(path_list)
 
+        self.logger.debug("[SlotClassifier] Fitting count vectorizer (sequence_text)...")
         self.cv_sequence_text = CountVectorizer()
         self.cv_sequence_text.fit(sequence_words_list)
 
@@ -486,9 +490,11 @@ class SlotClassifier:
     ) -> spmatrix:
         # spacy words
 
+        self.logger.debug("[SlotClassifier] Getting features (text)...")
         f_sp1_text = self.cv_text.transform([span1.text for span1 in span1_list])
         f_sp2_text = self.cv_text.transform([span2.text for span2 in span2_list])
 
+        self.logger.debug("[SlotClassifier] Getting features (labels)...")
         f_sp1_label = self.cv_labels.transform(
             [span1.span_type.name for span1 in span1_list]
         )
@@ -496,6 +502,7 @@ class SlotClassifier:
             [span2.span_type.name for span2 in span2_list]
         )
 
+        self.logger.debug("[SlotClassifier] Getting features (shortest path)...")
         shortest_path_features = self.get_shortest_path_features(
             doc_list, graph_list, span1_list, span2_list, idx2word_list, edge2dep_list
         )
@@ -555,6 +562,7 @@ class SlotClassifier:
         return X_feats
 
     def save_model(self, filename: str) -> None:
+        self.logger.info("[SlotClassifier] Saving model to %s", filename)
         joblib.dump(
             [
                 self.cls,
@@ -568,6 +576,7 @@ class SlotClassifier:
         )
 
     def load_model(self, filename: str) -> None:
+        self.logger.info("[SlotClassifier] Loading model from %s", filename)
         (
             self.cls,
             self.cv_text,

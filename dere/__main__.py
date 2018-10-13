@@ -55,6 +55,8 @@ def cli(verbose: bool, quiet: int) -> None:
     #                  0            1              2             (3)
     verbosity = [logging.INFO, logging.WARN, logging.ERROR, logging.DEBUG][val]
     logging.basicConfig(stream=sys.stderr, level=verbosity)
+    if not verbose:
+        warnings.simplefilter("ignore")
 
 @cli.command()
 @click.option("--model", default="baseline")

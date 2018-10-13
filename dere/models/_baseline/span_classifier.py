@@ -15,6 +15,7 @@ from nltk.tokenize import TreebankWordTokenizer
 
 from dere.taskspec import TaskSpecification, SpanType
 from dere.corpus import Corpus, Instance, Span
+from dere.utils import progressify
 
 from sklearn.externals import joblib
 
@@ -63,14 +64,16 @@ class SpanClassifier:
         corpus_train: Corpus,
         dev_corpus: Optional[Corpus] = None,
     ) -> None:
-        self.logger.info("[SpanClassifier] extracting features...")
+        self.logger.info("[SpanClassifier] Extracting features...")
         X_train = self.get_features(corpus_train)
-        self.logger.info("[SpanClassifier] extracting features done")
+        self.logger.info("[SpanClassifier] Extracting features done")
 
         self.logger.debug("[SpanClassifier] using " + str(len(X_train)) + " sentences for training")
 
         if dev_corpus is not None:
+            self.logger.info("[SpanClassifier] Extracting features from dev corpus...")
             X_dev = self.get_features(dev_corpus)
+            self.logger.info("[SpanClassifier] Extracting features from dev corpus done")
 
         self.logger.info(
             "[SpanClassifier] target span types: " + str([st.name for st in self.target_span_types])
@@ -121,7 +124,7 @@ class SpanClassifier:
                 for aps in aps_possibilities:
                     if stopTraining:
                         break
-                    for c2v in c2v_possibilities:
+                    for c2v in progressify(c2v_possibilities, "c2v value: %i"):
                         if stopTraining:
                             break
                         index += 1
@@ -169,8 +172,8 @@ class SpanClassifier:
     ) -> float:
         y_pred = classifier.predict(X_dev)
         try:
-            self.logger.info(
-                "[SpanClassifier] %r",
+            self.logger.debug(
+                "[SpanClassifier] %s",
                 metrics.flat_classification_report(
                     y_dev, y_pred, labels=["I", "B"], digits=3
                 )
@@ -337,7 +340,7 @@ class SpanClassifier:
 
     def get_features(self, corpus: Corpus) -> List[List[Features]]:
         feature_list = []
-        for instance in corpus.instances:
+        for instance in progressify(corpus.instances, "getting features"):
             instance_text = instance.text.replace('"', "'")
             instance.text = instance_text
             token_spans = list(word_tokenizer.span_tokenize(instance_text))
@@ -397,6 +400,7 @@ class SpanClassifier:
     def prepare_results(
         self, predictions: Dict[str, List[List[str]]], corpus: Corpus
     ) -> None:
+        self.logger.info("[SpanClassifier] Preparing results...")
         for i, instance in enumerate(corpus.instances):
             instance_text = instance.text.replace('"', "'")
             instance.text = instance_text
@@ -427,3 +431,4 @@ class SpanClassifier:
                             current_span_left,
                             current_span_right,
                     )
+        self.logger.info("[SpanClassifier] Preparing results done")
