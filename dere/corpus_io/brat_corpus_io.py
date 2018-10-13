@@ -1,7 +1,10 @@
 import os
+import logging
 from itertools import product
 from typing import Optional, Dict, List, Sequence, Union, Optional, Set, cast
 import os.path
+
+logger = logging.getLogger("dere")
 
 
 from dere.corpus import Corpus, Instance

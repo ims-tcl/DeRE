@@ -8,6 +8,11 @@ import logging
 import click
 from typing import Dict, Tuple, List
 
+logger = logging.getLogger(__name__)
+handler = logging.StreamHandler()
+handler.setFormatter(logging.Formatter("%(asctime)s - %(message)s"))
+logger.addHandler(handler)
+
 
 def read_text_file(filename: str) -> (str, int):
     output = ""
@@ -35,7 +40,7 @@ def read_a1_file(
                     events_in_text[i] = "E"
                 span_annotations[cur_id] = [cur_type, begin, end]
             else:
-                logging.warning("invalid annotation in a1 file: " + line)
+                logger.warning("invalid annotation in a1 file: " + line)
     return span_annotations, events_in_text
 
 
@@ -130,7 +135,7 @@ def read_a2_file(
                     remain.remove(r)
                     changep = 1
             if changep == 0:
-                logging.info(
+                logger.info(
                     "circular reference: [" + filename + "]" + ", ".join(remain)
                 )
                 new_e_list.extend(remain)
@@ -159,7 +164,7 @@ def read_a2_file(
                 del frame_annotations[e_id]
                 to_remove.append(e_id)
                 equiv[e_id] = d_id
-                logging.info(
+                logger.info(
                     "["
                     + filename
                     + "]"
@@ -487,7 +492,7 @@ def eq_span(
         gend = golds_span[golds_frame[gid][1]][2]
 
     if abeg < 0 or gbeg < 0:
-        logging.error("failed to find the span: (" + aid + ", " + gid + ")")
+        logger.error("failed to find the span: (" + aid + ", " + gid + ")")
         return False
 
     if do_soft_overlap:
@@ -539,10 +544,10 @@ def eq_revent(
     do_soft_overlap_span: bool,
 ) -> bool:
     if not re.search(r"^E", aeid):
-        logging.error("non-event annotation: " + aeid)
+        logger.error("non-event annotation: " + aeid)
         return False
     if not re.search(r"^E", geid):
-        logging.error("non-event annotation: " + geid)
+        logger.error("non-event annotation: " + geid)
         return False
     if (
         eq_class(
@@ -607,10 +612,10 @@ def eq_entity(
     do_soft_overlap_span: bool,
 ) -> bool:
     if not re.search(r"^T", aeid):
-        logging.error("non-entity annotation: " + aeid)
+        logger.error("non-entity annotation: " + aeid)
         return False
     if not re.search(r"^T", geid):
-        logging.error("non-entity annotation: " + geid)
+        logger.error("non-entity annotation: " + geid)
         return False
     if eq_class(
         aeid,

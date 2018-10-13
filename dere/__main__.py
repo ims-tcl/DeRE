@@ -6,6 +6,11 @@ import sys
 import warnings
 from typing import Optional
 
+logger = logging.getLogger("dere")
+handler = logging.StreamHandler()
+handler.setFormatter(logging.Formatter("[%(levelname)s] %(asctime)s - %(message)s"))
+logger.addHandler(handler)
+logger.propagate = False
 
 import click
 # path hackery to get imports working as intended
@@ -60,7 +65,12 @@ def build(model: str, spec: str, outfile: str) -> None:
 
 
 def _build(model_name: str, spec_path: str, out_path: str) -> None:
-    print("building with", model_name, spec_path, out_path)
+    logger.info(
+        "[main] Building with model %s, specification %s, outputting to %s",
+        model_name,
+        spec_path,
+        out_path,
+    )
     spec = dere.taskspec.load_from_xml(spec_path)
     try:
         model = MODELS[model_name](spec)
@@ -98,7 +108,7 @@ def _train(
     dev_corpus_path: Optional[str],
     corpus_split: Optional[str],
 ) -> None:
-    print("training with", corpus_path, model_path, out_path)
+    logger.info("[main] Training on corpus %s with model %s, outputting to %s", corpus_path, model_path, out_path)
     with open(model_path, "rb") as f:
         model = pickle.load(f)
 
@@ -140,7 +150,7 @@ def _predict(
     output_format: Optional[str],
     output_path: str,
 ) -> None:
-    print("predicting with", corpus_path, model_path)
+    logger.info("[main] Predicting on corpus %s and model %s", corpus_path, model_path)
     with open(model_path, "rb") as f:
         model = pickle.load(f)
 
@@ -168,7 +178,7 @@ def evaluate(corpus_path: str, model_path: str, corpus_format: str) -> None:
 
 
 def _evaluate(corpus_path: str, model_path: str, corpus_format: str) -> None:
-    print("evaluating with", corpus_path, model_path)
+    logger.info("[main] Evaluating on corpus %s and model %s", corpus_path, model_path)
     with open(model_path, "rb") as f:
         model = pickle.load(f)
 
@@ -178,7 +188,7 @@ def _evaluate(corpus_path: str, model_path: str, corpus_format: str) -> None:
 
     model.predict(predictions)
     result = model.eval(gold, predictions)
-    print(result)  # or something smarter
+    logger.info("[main] Result: %r", result)  # or something smarter
 
 
 cli()
