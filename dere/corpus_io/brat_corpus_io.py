@@ -80,6 +80,8 @@ class BRATCorpusIO(CorpusIO):
             annotation2filename: Optional[str] = None
             if load_gold:
                 annotation2filename = os.path.join(path, (cur_id + ".a2"))
+                if not os.path.isfile(annotation2filename):
+                    annotation2filename = None
             self.read_data(
                 corpus=corpus,
                 textfilename=os.path.join(path, (cur_id + ".txt")),

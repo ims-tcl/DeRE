@@ -5,11 +5,14 @@ import pickle
 
 from dere.corpus import Corpus
 from dere.taskspec import TaskSpecification
-from dere import Result
+from dere.evaluation import Result
 
 
 class Model:
-    def __init__(self, task_spec: TaskSpecification, model_spec: Dict[str, Any]) -> None:
+    def __init__(
+            self, task_spec: TaskSpecification, model_spec: Dict[str, Any],
+            *args: Any, **kwargs: Any
+    ) -> None:
         self.task_spec = task_spec
         self.model_spec = model_spec
 

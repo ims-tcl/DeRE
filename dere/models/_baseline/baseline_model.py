@@ -5,7 +5,6 @@ from typing import Optional, Dict, Any, IO
 from dere.corpus import Corpus
 from dere.models import Model
 from dere.taskspec import TaskSpecification
-from dere import Result
 
 import numpy as np
 
@@ -42,6 +41,3 @@ class BaselineModel(Model):
     def load(self, f: IO[bytes]) -> None:
         self._span_classifier.load(f)
         self._slot_classifier.load(f)
-
-    # not needed in the baseline model:
-    # def eval(self, corpus: Corpus, predicted: list) -> Result: ...

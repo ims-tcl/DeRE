@@ -28,7 +28,6 @@ from sklearn.externals import joblib
 from scipy.sparse import hstack, csr_matrix, spmatrix, vstack
 from sklearn.utils import shuffle
 
-from dere import Result
 from dere.corpus import Corpus, Instance, Frame, Span, Slot, Filler
 from dere.taskspec import TaskSpecification, FrameType, SpanType, SlotType
 from dere.models import Model
@@ -51,7 +50,10 @@ _ArrayLike = Union[List, np.ndarray, spmatrix]
 
 
 class SlotClassifier(Model):
-    def __init__(self, task_spec: TaskSpecification, model_spec: Dict[str, Any], seed: int = 98765) -> None:
+    def __init__(
+            self, task_spec: TaskSpecification, model_spec: Dict[str, Any],
+            seed: int = 98765
+    ) -> None:
         super().__init__(task_spec, model_spec)
         self.seed = seed
         self.logger = logging.getLogger(__name__)

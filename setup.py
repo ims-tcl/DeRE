@@ -22,7 +22,7 @@ setup(
         'scikit-learn == 0.19.2',
         'sklearn-crfsuite == 0.3.6',
         'nltk == 3.3',
-        'networkx == 2.1',
+        'networkx >= 2.2',
         'spacy == 2.0.12',
     ],
     entry_points={

@@ -4,6 +4,8 @@ from dataclasses import dataclass, field
 from itertools import count
 import random
 
+import networkx as nx
+
 from dere.taskspec import SpanType, FrameType, SlotType
 
 
@@ -25,6 +27,16 @@ class Instance:
         frame = Frame(frame_type, self)
         self.frames.append(frame)
         return frame
+
+    def frame_graph(self) -> nx.DiGraph:
+        g = nx.DiGraph()
+        for frame in self.frames:
+            g.add_node(frame, frame=frame)
+            for slot in frame.slots.values():
+                for filler in slot.fillers:
+                    if isinstance(filler, Frame):
+                        g.add_edge(frame, filler, slot=slot)
+        return g
 
 
 class Corpus:
@@ -88,6 +100,13 @@ class Span:
     @property
     def text(self) -> str:
         return self.instance.text[self.left:self.right]
+
+    def matches(self, other: Span) -> bool:
+        return isinstance(other, Span) and (
+            (self.instance.document_id, self.span_type, self.left, self.right)
+            ==
+            (other.instance.document_id, other.span_type, other.left, other.right)
+        )
 
 
 class Slot:

@@ -18,7 +18,8 @@ from dere.models import Model, BaselineModel, NOPModel
 from dere.corpus import Corpus
 import dere.taskspec
 from dere.taskspec import TaskSpecification
-
+import dere.evaluation
+from dere.evaluation import Result
 
 CORPUS_IOS = {"BRAT": BRATCorpusIO, "CQSA": CQSACorpusIO}
 
@@ -53,6 +54,7 @@ def save_model(model: Model, path: str) -> None:
 @click.group()
 @click.option("--verbosity", default="INFO")
 def cli(verbosity: str) -> None:
+    sys.path.append(os.getcwd())
     logging.basicConfig(stream=sys.stdout, level=getattr(logging, verbosity))
 
 
@@ -160,23 +162,24 @@ def _predict(
 
 
 @cli.command()
-@click.argument("corpus_path")
-@click.option("--model-path", default="trained_model.pkl")
+@click.option("--hypo", required=True)
+@click.option("--gold", required=True)
+@click.option("--task-spec", required=True)
 @click.option("--corpus-format", required=True)
-def evaluate(corpus_path: str, model_path: str, corpus_format: str) -> None:
-    _evaluate(corpus_path, model_path, corpus_format)
+def evaluate(hypo: str, gold: str, task_spec: str, corpus_format: str) -> None:
+    _evaluate(hypo, gold, task_spec, corpus_format)
 
 
-def _evaluate(corpus_path: str, model_path: str, corpus_format: str) -> None:
-    print("evaluating with", corpus_path, model_path)
-    model = load_model(model_path)
+def _evaluate(hypo_path: str, gold_path: str, task_spec_path: str, corpus_format: str) -> None:
+    print("evaluating %s against %s using task specification %s" % (hypo_path, gold_path, task_spec_path))
 
-    corpus_io = CORPUS_IOS[corpus_format](model.task_spec)
-    corpus = corpus_io.load(corpus_path, False)
-    gold = corpus_io.load(corpus_path, True)
+    task_spec = dere.taskspec.load_from_xml(task_spec_path)
+    corpus_io = CORPUS_IOS[corpus_format](task_spec)
+    hypo = corpus_io.load(hypo_path, True)
+    gold = corpus_io.load(gold_path, True)
 
-    result = model.evaluate(corpus, gold)
-    print(result)  # or something smarter
+    result = dere.evaluation.evaluate(hypo, gold, task_spec)
+    print(result.report())
 
 
 cli()
