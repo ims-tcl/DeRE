@@ -14,5 +14,5 @@ class CorpusIO:
     def load(self, path: str, load_gold: bool = True) -> Corpus:
         ...
 
-    def dump(self, corpus: Corpus, path: str) -> None:
+    def dump(self, corpus: Corpus, path: str, just_predictions: bool = True) -> None:
         ...

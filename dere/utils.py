@@ -65,10 +65,14 @@ def _grid_search_class(
             for i, (model, value) in enumerate(zip(self.models, param_values)):
                 print("Grid Search: %s: %s" % (param_name, str(value)))
                 model.train(corpus, dev_corpus)
-                score = model.evaluate(corpus, dev_corpus)
-                if best_model_index is None or score < best_score:
+                score = model.evaluate(dev_corpus)
+                if best_model_index is None or score > best_score:
+                    print("Best score!")
                     best_model_index = i
                     best_score = score
+                else:
+                    print("No improvement")
+                print(score.report())
             # keep mypy happy; thought I guess if we have zero models this would be applicable
             if best_model_index is not None:
                 self.best_model_index = best_model_index

@@ -64,12 +64,12 @@ class CQSACorpusIO(CorpusIO):
             span = None
             span_type = self._spec.span_type_lookup(child.tag)
             if span_type is not None:
-                span = instance.new_span(span_type, left, right)
+                span = instance.new_span(span_type, left, right, "gold")
                 instance.spans.append(span)
                 ids[child.attrib["id"]] = span
             frame_type = self._spec.frame_type_lookup(child.tag)
             if frame_type is not None:
-                frame = instance.new_frame(frame_type)
+                frame = instance.new_frame(frame_type, "gold")
                 if span is not None:
                     slot = frame.slot_lookup(frame_type.name)
                     if slot is not None:

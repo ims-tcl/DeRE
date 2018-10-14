@@ -1,6 +1,7 @@
 from __future__ import annotations
 from collections import defaultdict
 from typing import Union, Collection, List, Dict, Tuple, Any
+from functools import total_ordering
 
 import networkx as nx
 
@@ -13,15 +14,11 @@ _SFType = Union[SpanType, FrameType]
 def evaluate_instances(hypo: List[Instance], gold: List[Instance], task_spec: TaskSpecification) -> Result:
     r = Result(task_spec)
     hypo_spans: List[Span] = []
-    hypo_frames: List[Frame] = []
     for instance in hypo:
-        hypo_spans += instance.spans
-        hypo_frames += instance.frames
+        hypo_spans += [span for span in instance.spans if span.source != 'given']
     gold_spans: List[Span] = []
-    gold_frames: List[Frame] = []
     for instance in gold:
-        gold_spans += instance.spans
-        gold_frames += instance.frames
+        gold_spans += [span for span in instance.spans if span.source != 'given']
     for hspan in hypo_spans:
         for gspan in gold_spans:
             if hspan.matches(gspan):
@@ -73,19 +70,22 @@ def evaluate_instances(hypo: List[Instance], gold: List[Instance], task_spec: Ta
             if nx.is_isomorphic(gcc, hcc, node_match=node_match, edge_match=edge_match):
                 for frame in gcc.nodes():
                     assert isinstance(frame, Frame)
-                    r.true_positives[frame.frame_type] += 1
+                    if frame.source != 'given':
+                        r.true_positives[frame.frame_type] += 1
                 del hccs[i]
                 break
         else:
             for frame in gcc.nodes():
                 assert isinstance(frame, Frame)
-                r.false_negatives[frame.frame_type] += 1
+                if frame.source != 'given':
+                    r.false_negatives[frame.frame_type] += 1
 
     # everything left over in hcc is a false positive
     for hcc in hccs:
         for frame in hcc.nodes():
             assert isinstance(frame, Frame)
-            r.false_positives[frame.frame_type] += 1
+            if frame.source != 'given':
+                r.false_positives[frame.frame_type] += 1
 
     return r
 
@@ -133,6 +133,7 @@ def _string_table(table: List[Union[List[Any], str]], padding: int = 2) -> str:
     return s
 
 
+@total_ordering
 class Result:
     def __init__(self, task_spec: TaskSpecification) -> None:
         self.task_spec = task_spec
@@ -200,6 +201,22 @@ class Result:
             r.false_positives[sf_type] = self.false_positives[sf_type] + other.false_positives[sf_type]
             r.false_negatives[sf_type] = self.false_negatives[sf_type] + other.false_negatives[sf_type]
         return r
+
+    def __eq__(self, other: Any) -> bool:
+        if not isinstance(other, Result):
+            return False
+        return (
+            self.fscore(self.task_spec.frame_types) == other.fscore(other.task_spec.frame_types)
+            and self.fscore(self.task_spec.span_types) == other.fscore(other.task_spec.span_types)
+        )
+
+    def __lt__(self, other: Result) -> bool:
+        sf = self.fscore(self.task_spec.frame_types)
+        of = other.fscore(other.task_spec.frame_types)
+        if sf == of:
+            return self.fscore(self.task_spec.span_types) < other.fscore(other.task_spec.span_types)
+        else:
+            return sf < of
 
     def report(self) -> str:
         def row(cls: Union[_SFType, Collection[_SFType]], label: str) -> List[Any]:

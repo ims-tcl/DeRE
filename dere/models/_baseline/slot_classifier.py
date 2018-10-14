@@ -84,14 +84,10 @@ class SlotClassifier(Model):
     def initialize(self) -> None:
         random.seed(self.seed)
         self.cls: Optional[LinearSVC] = None
-
-    def dump(self, f: IO[bytes]) -> None:
-        pickle.dump(random.getstate(), f)
-        pickle.dump(self.cls, f)
-
-    def load(self, f: IO[bytes]) -> None:
-        random.setstate(pickle.load(f))
-        self.cls = pickle.load(f)
+        self.cv_text: Optional[CountVectorizer] = None
+        self.cv_labels: Optional[CountVectorizer] = None
+        self.cv_deps_words: Optional[CountVectorizer] = None
+        self.cv_sequence_text: Optional[CountVectorizer] = None
 
     def shuffle(self, X: _ArrayLike, y: _ArrayLike) -> Tuple[_ArrayLike, _ArrayLike]:
         X_shuffled, y_shuffled = shuffle(X, y, random_state=1111)
@@ -504,6 +500,10 @@ class SlotClassifier(Model):
         edge2dep_list: List[Dict[Tuple[int, int], str]],
         sequence_words_list: List[str],
     ) -> spmatrix:
+        assert self.cv_text is not None
+        assert self.cv_labels is not None
+        assert self.cv_deps_words is not None
+        assert self.cv_sequence_text is not None
         # spacy words
 
         f_sp1_text = self.cv_text.transform([span1.text for span1 in span1_list])
@@ -574,28 +574,31 @@ class SlotClassifier(Model):
 
         return X_feats
 
-    def save_model(self, filename: str) -> None:
+    def dump(self, f: IO[bytes]) -> None:
         joblib.dump(
-            [
+            (
+                random.getstate(),
                 self.cls,
                 self.cv_text,
                 self.cv_labels,
                 self.labels,
                 self.cv_deps_words,
                 self.cv_sequence_text,
-            ],
-            filename,
+            ),
+            f,
         )
 
-    def load_model(self, filename: str) -> None:
+    def load(self, f: IO[bytes]) -> None:
         (
+            random_state,
             self.cls,
             self.cv_text,
             self.cv_labels,
             self.labels,
             self.cv_deps_words,
             self.cv_sequence_text,
-        ) = joblib.load(filename)
+        ) = joblib.load(f)
+        random.setstate(random_state)
 
     @staticmethod
     def find_node(doc: Doc, span: Span) -> List[spacy.tokens.Token]:

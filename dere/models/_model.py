@@ -5,7 +5,7 @@ import pickle
 
 from dere.corpus import Corpus
 from dere.taskspec import TaskSpecification
-from dere.evaluation import Result
+from dere.evaluation import evaluate, Result
 
 
 class Model:
@@ -53,5 +53,8 @@ class Model:
     def predict(self, corpus: Corpus) -> None:
         ...
 
-    def evaluate(self, corpus: Corpus, gold: Corpus) -> Result:
-        ...  # here there might actually be a sensible default implementation
+    def evaluate(self, corpus: Corpus) -> Result:
+        prediction = corpus.clone()
+        prediction.strip_gold()
+        self.predict(prediction)
+        return evaluate(prediction, corpus, self.task_spec)

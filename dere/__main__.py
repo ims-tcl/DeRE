@@ -158,7 +158,7 @@ def _predict(
     if not os.path.isdir(output_path):
         os.makedirs(output_path, exist_ok=True)
 
-    output_corpus_io.dump(corpus, output_path)
+    output_corpus_io.dump(corpus, output_path, False)
 
 
 @cli.command()
