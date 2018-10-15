@@ -79,7 +79,8 @@ class SpanClassifier:
             "[SpanClassifier] target span types: " + str([st.name for st in self.target_span_types])
         )
 
-        default_setup = {"aps": True, "c2v": 0.1}
+        Setup = TypedDict("Setup", {"aps": bool, "c2v": float})
+        default_setup: Setup = {"aps": True, "c2v": 0.1}
         if dev_corpus is None:
             self.logger.warning(
                 "[SpanClassifier] No dev corpus given. Using setup: " + str(default_setup)
@@ -94,9 +95,6 @@ class SpanClassifier:
             X_train_merged, target_t = self.shuffle(X_train_merged, target_t)
 
             if dev_corpus is None:
-                aps = True
-                c2v = 0.1
-                default_setup = {"aps": aps, "c2v": c2v}
                 crf = CRF(
                     algorithm="l2sgd",
                     all_possible_transitions=True,
@@ -113,7 +111,6 @@ class SpanClassifier:
                 self.logger.info("Starting grid search")
                 # optimize on dev
                 best_f1 = -1.0
-                Setup = TypedDict("Setup", {"aps": bool, "c2v": float})
                 best_setup: Setup = {"c2v": 0.001, "aps": True}
                 stopTraining = False
                 aps_possibilities = [True, False]
