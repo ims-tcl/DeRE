@@ -31,6 +31,7 @@ from sklearn.utils import shuffle
 from dere.corpus import Corpus, Instance, Frame, Span, Slot, Filler
 from dere.taskspec import TaskSpecification, FrameType, SpanType, SlotType
 from dere.models import Model
+from dere.utils import progressify
 
 try:
     nlp = spacy.load("en")
@@ -56,7 +57,10 @@ class SlotClassifier(Model):
     ) -> None:
         super().__init__(task_spec, model_spec)
         self.seed = seed
-        self.logger = logging.getLogger(__name__)
+
+        # TODO(Sean) move this to model.__init__
+        self.logger = logging.getLogger("dere")
+
         # Find our plausible relations from the spec
         self.plausible_relations: Dict[Tuple[SpanType, SpanType], List[Edge]] = {}
         labels: Set[Any] = {"Nothing"}
@@ -78,7 +82,7 @@ class SlotClassifier(Model):
                         labels.add((frame_type, slot_type))
         self.labels = list(labels)
         self.logger.debug(
-            "plausible relations for slot classifier: " + str(self.plausible_relations)
+            "[SlotClassifier] plausible relations for slot classifier: " + str(self.plausible_relations)
         )
 
     def initialize(self) -> None:
@@ -98,33 +102,39 @@ class SlotClassifier(Model):
 
         x, y = self.shuffle(x_tmp, y_tmp)
 
+        self.logger.info("[SlotClassifier] Using " + str(x.shape[0]) + " instances for training")
+
         if dev_corpus is None:
-            self.cls = LinearSVC()
+            self.cls = LinearSVC(max_iter=10000)
             self.cls.fit(x, y)
         else:
+            x_dev, y_dev, _ = self.get_features_and_labels(dev_corpus)
             best_f1 = -1.0
             best_c = 0.0
             best_cls = None
-            for c_param in [0.01, 0.03, 0.1, 0.3, 1.0, 3.0, 10.0, 30.0, 100]:
-                self.cls = LinearSVC(C=c_param, class_weight="balanced")
+            self.logger.info("[SlotClassifier] Starting grid search...")
+            for c_param in progressify([0.01, 0.03, 0.1, 0.3, 1.0, 3.0, 10.0, 30.0, 100]):
+                self.cls = LinearSVC(C=c_param, class_weight="balanced", max_iter=10000)
                 self.cls.fit(x, y)
-                self.logger.info("current c: " + str(c_param))
+                self.logger.debug("[SlotClassifier] current c: " + str(c_param))
                 micro_f1 = self._eval(dev_corpus)
                 if micro_f1 > best_f1:
                     best_c = c_param
                     best_cls = copy.deepcopy(self.cls)
                     best_f1 = micro_f1
             assert best_cls is not None
-            self.logger.info("Best c: " + str(best_c))
-            self.logger.info("Retraining on all data")
+            self.logger.info("[SlotClassifier] Grid search done")
+            self.logger.debug("[SlotClassifier] Best c: " + str(best_c))
+            self.logger.info("[SlotClassifier] Training on all training data...")
             dev_x, dev_y, _ = self.get_features_and_labels(dev_corpus, is_train=False)
             assert(isinstance(x, spmatrix))
             train_x_all_tmp = vstack([x, dev_x])
-            self.logger.info("train_x_all shape: " + str(train_x_all_tmp.shape))
+            self.logger.debug("[SlotClassifier] train_x_all shape: " + str(train_x_all_tmp.shape))
             train_y_all_tmp = np.concatenate([y, dev_y])
             train_x_all, train_y_all = self.shuffle(train_x_all_tmp, train_y_all_tmp)
-            self.cls = LinearSVC(C=best_c, class_weight="balanced")
+            self.cls = LinearSVC(C=best_c, class_weight="balanced", max_iter=10000)
             self.cls.fit(train_x_all, train_y_all)
+            self.logger.info("[SlotClassifier] Training done")
 
     def predict(self, corpus: Corpus) -> None:
         assert self.cls is not None
@@ -133,9 +143,11 @@ class SlotClassifier(Model):
             # edge case -- we have no span pairs to classify
             # so there's nothing for us to do
             return
+        self.logger.info("[SlotClassifier] Predicting relations")
         y_pred = self.cls.predict(x)
         predicted_labels = [self.labels[pi] for pi in y_pred]
         results_by_instance: List[List[Relation]] = []
+        self.logger.info("[SlotClassifier] Generating frames")
         for (anchor_span, filler_span), predicted_label in zip(
             span_pairs, predicted_labels
         ):
@@ -151,17 +163,9 @@ class SlotClassifier(Model):
                     [((anchor_span, filler_span), predicted_label)]
                 )
         for instance_results in results_by_instance:
-            # self.logger.debug("XXX results before decoding XXX\n")
-            for ir in instance_results:
-                span1, span2 = ir[0]
-                relation = ir[1]
-                msg = "BEFORE DECODING: " + "\t" + span1.text + "\t"
-                msg += span2.text + "\t" + str(relation)
-                self.logger.debug(msg)
-            # self.logger.debug(instance_results)
-            # self.logger.debug("XXX end results before decoding XXX")
             instance_results = self.filter_results(instance_results)
             self.generate_frames(instance_results)
+        self.logger.info("[SlotClassifier] Finished generating frames")
 
     def filter_results(self, results: List[Relation]) -> List[Relation]:
         def filt(relation: Relation) -> bool:
@@ -223,13 +227,23 @@ class SlotClassifier(Model):
                             new_frame.remove()
                             break
 
-    def _eval(self, corpus: Corpus) -> float:
-
-        """This function evaluates only the slot classifier, assuming
-        the correct spans in gold"""
+    def _eval(
+            self,
+            corpus: Corpus, x: Optional[spmatrix] = None,
+            y_gold: Optional[np.ndarray] = None
+    ) -> float:
+        """
+        This function evaluates only the slot classifier, assuming
+        the correct spans in gold
+        """
         assert self.cls is not None
 
-        x, y_gold, _ = self.get_features_and_labels(corpus)
+        if x is None:
+            x, y_gold, _ = self.get_features_and_labels(corpus)
+
+        assert isinstance(x, spmatrix)
+        assert isinstance(y_gold, np.ndarray)
+
         y_pred = self.cls.predict(x)
         prec, reca, f1, supp = precision_recall_fscore_support(
             y_gold,
@@ -245,14 +259,14 @@ class SlotClassifier(Model):
             (f1, "F1-score"),
             (accuracy, "Accuracy"),
         ]:
-            self.logger.info(name + "\t" + str(score))
+            self.logger.info("[SlotClassifier] %r", name + "\t" + str(score))
 
-        self.logger.debug("labels:")
+        self.logger.debug("[SlotClassifier] labels:")
         for i, label in enumerate(self.labels):
-            self.logger.debug("%s\t%s", i, label)
+            self.logger.debug("[SlotClassifier] %s\t%s", i, label)
 
-        self.logger.debug("Confusion matrix:")
-        self.logger.debug(confusion_matrix(y_gold, y_pred))
+        self.logger.debug("[SlotClassifier] Confusion matrix:")
+        self.logger.debug("[SlotClassifier] %r", confusion_matrix(y_gold, y_pred))
 
         return f1
 
@@ -275,12 +289,10 @@ class SlotClassifier(Model):
         idx2word_list: List[Dict[int, str]] = []
         edge2dep_list = []
         sequence_words_list: List[Any] = []
-        prev_status = -1
-        for i, instance in enumerate(corpus.instances):
+        self.logger.info("[SlotClassifier] Getting features/labels...")
+        for i, instance in enumerate(progressify(corpus.instances, "getting features")):
             instance_text = instance.text.replace('"', "'")
             doc, graph, idx2word, edge2dep = self.preprocess_text(instance_text)
-            for span in instance.spans:
-                self.logger.debug("SPANS: " + str(span.text) + "\t" + str(span.span_type))
             relations = self.get_relations(instance)
             for (span1, span2), relation in relations:
                 span1_list.append(span1)
@@ -291,16 +303,12 @@ class SlotClassifier(Model):
                 edge2dep_list.append(edge2dep)
                 sequence_words_list.append(self.build_sequence(doc, span1, span2))
                 labels.append(relation)
-            status = int(100 * i / len(corpus.instances))
-            if prev_status != status and status % 10 == 0:
-                self.logger.info("preprocessing %f%%" % (status))
-            prev_status = status
 
-        self.logger.info("preprocessing %f%%" % (100))
+        self.logger.info("[SlotClassifier] Getting features/labels done")
         # TOmaybeDO:
         # possibly give a list of all words in this
         # (list(iwl.values() for iwl in idx2word_list))
-        self.logger.info("fitting count vectorizer")
+        self.logger.info("[SlotClassifier] Fitting count vectorizer...")
         # this is only for training
         if is_train:
             self.fit_count_vectorizers(
@@ -312,9 +320,10 @@ class SlotClassifier(Model):
                 edge2dep_list,
                 sequence_words_list,
             )
+        self.logger.info("[SlotClassifier] Fitting count vectorizer done")
 
         set_name = "train" if is_train else "dev"
-        self.logger.info("creating features for " + str(set_name) + " set")
+        self.logger.info("[SlotClassifier] Creating features for " + str(set_name) + " set...")
         x = self.features_from_instance(
             span1_list,
             span2_list,
@@ -324,15 +333,14 @@ class SlotClassifier(Model):
             edge2dep_list,
             sequence_words_list,
         )
-
-        self.logger.debug("labels: " + str(self.labels))
+        self.logger.info("[SlotClassifier] Creating features for " + str(set_name) + " set done")
 
         y = np.array([self.labels.index(label) for label in labels])
 
-        bincount_y = np.bincount(y)
-        self.logger.info(str(bincount_y))
-        # for l_idx in range(len(labels)):
-        #    self.logger.info(str(labels[l_idx]) + "\t" + str(bincount_y[l_idx]))
+        if is_train:
+            self.logger.debug("[SlotClassifier] labels: " + str(self.labels))
+            bincount_y = np.bincount(y)
+            self.logger.debug("[SlotClassifier] %r", str(bincount_y))
 
         return x, y, list(zip(span1_list, span2_list))
 
@@ -353,15 +361,16 @@ class SlotClassifier(Model):
             if (x.span_type, y.span_type) in self.plausible_relations:
                 arc = cast(Label, arcs.get((x, y)))
                 if arc is not None:
-                    self.logger.debug("found relation: " + str(arc))
+                    self.logger.debug("[SlotClassifier] found relation: " + str(arc))
                     self.logger.debug(
-                        "x.span_type: "
+                        "[SlotClassifier] x.span_type: "
                         + str(x.span_type)
                         + ", y.span_type: "
                         + str(y.span_type)
                     )
                     self.logger.debug(
-                        self.plausible_relations[x.span_type, y.span_type]
+                        "[SlotClassifier] %r",
+                        self.plausible_relations[x.span_type, y.span_type],
                     )
                 span_pairs.append(
                     (
@@ -393,9 +402,11 @@ class SlotClassifier(Model):
             edge2dep[(token.idx, token.head.idx)] = token.dep_
             edge2dep[(token.head.idx, token.idx)] = token.dep_
         graph = nx.Graph(edges)
-        # print(edges)
-        # print(graph)
-        # print("---")
+        self.logger.debug(
+            "[SlotClassifier] preprocess text - edges: %r, graph: %r",
+            edges,
+            graph,
+        )
         return doc, graph, idx2word, edge2dep
 
     def fit_count_vectorizers(
@@ -418,21 +429,21 @@ class SlotClassifier(Model):
             edge2dep_list,
         )
 
+        self.logger.debug("[SlotClassifier] Fitting count vectorizer (text)...")
         self.cv_text = CountVectorizer()
         span_text_list = [sp.text for sp in span1_list + span2_list]
-        # self.logger.info("fitting word count vectorizer with:")
-        # self.logger.info(span_text_list + shortest_path_list)
         self.cv_text.fit(span_text_list + shortest_path_list)
 
+        self.logger.debug("[SlotClassifier] Fitting count vectorizer (labels)...")
         self.cv_labels = CountVectorizer()
         span_label_list = [sp.span_type.name for sp in span1_list + span2_list]
-        # self.logger.debug("fitting label count vectorizer with:")
-        # self.logger.debug(span_label_list)
         self.cv_labels.fit(span_label_list)
 
+        self.logger.debug("[SlotClassifier] Fitting count vectorizer (dep_words)...")
         self.cv_deps_words = CountVectorizer(ngram_range=(2, 2))  # type: ignore
         self.cv_deps_words.fit(path_list)
 
+        self.logger.debug("[SlotClassifier] Fitting count vectorizer (sequence_text)...")
         self.cv_sequence_text = CountVectorizer()
         self.cv_sequence_text.fit(sequence_words_list)
 
@@ -506,9 +517,11 @@ class SlotClassifier(Model):
         assert self.cv_sequence_text is not None
         # spacy words
 
+        self.logger.debug("[SlotClassifier] Getting features (text)...")
         f_sp1_text = self.cv_text.transform([span1.text for span1 in span1_list])
         f_sp2_text = self.cv_text.transform([span2.text for span2 in span2_list])
 
+        self.logger.debug("[SlotClassifier] Getting features (labels)...")
         f_sp1_label = self.cv_labels.transform(
             [span1.span_type.name for span1 in span1_list]
         )
@@ -516,6 +529,7 @@ class SlotClassifier(Model):
             [span2.span_type.name for span2 in span2_list]
         )
 
+        self.logger.debug("[SlotClassifier] Getting features (shortest path)...")
         shortest_path_features = self.get_shortest_path_features(
             doc_list, graph_list, span1_list, span2_list, idx2word_list, edge2dep_list
         )
@@ -539,24 +553,24 @@ class SlotClassifier(Model):
         )
         f_sequence_words = self.cv_sequence_text.transform(sequence_words_list)
 
-        self.logger.debug("f_sp1_text")
-        self.logger.debug(f_sp1_text.shape)
-        self.logger.debug("f_sp2_text")
-        self.logger.debug(f_sp2_text.shape)
-        self.logger.debug("f_sp1_label")
-        self.logger.debug(f_sp1_label.shape)
-        self.logger.debug("f_sp2_label")
-        self.logger.debug(f_sp2_label.shape)
-        self.logger.debug("f_shortest_path_distance")
-        self.logger.debug(f_shortest_path.shape)
-        self.logger.debug("f_sequence_distance")
-        self.logger.debug(f_sequence_distance.shape)
-        self.logger.debug("f_sequence_words")
-        self.logger.debug(f_sequence_words.shape)
-        self.logger.debug("f_shortest_path_words")
-        self.logger.debug(f_shortest_path_words.shape)
-        self.logger.debug("f_path_deps")
-        self.logger.debug(f_path_deps.shape)
+        self.logger.debug("[SlotClassifier] f_sp1_text")
+        self.logger.debug("[SlotClassifier] %r", f_sp1_text.shape)
+        self.logger.debug("[SlotClassifier] f_sp2_text")
+        self.logger.debug("[SlotClassifier] %r", f_sp2_text.shape)
+        self.logger.debug("[SlotClassifier] f_sp1_label")
+        self.logger.debug("[SlotClassifier] %r", f_sp1_label.shape)
+        self.logger.debug("[SlotClassifier] f_sp2_label")
+        self.logger.debug("[SlotClassifier] %r", f_sp2_label.shape)
+        self.logger.debug("[SlotClassifier] f_shortest_path_distance")
+        self.logger.debug("[SlotClassifier] %r", f_shortest_path.shape)
+        self.logger.debug("[SlotClassifier] f_sequence_distance")
+        self.logger.debug("[SlotClassifier] %r", f_sequence_distance.shape)
+        self.logger.debug("[SlotClassifier] f_sequence_words")
+        self.logger.debug("[SlotClassifier] %r", f_sequence_words.shape)
+        self.logger.debug("[SlotClassifier] f_shortest_path_words")
+        self.logger.debug("[SlotClassifier] %r", f_shortest_path_words.shape)
+        self.logger.debug("[SlotClassifier] f_path_deps")
+        self.logger.debug("[SlotClassifier] %r", f_path_deps.shape)
 
         X_feats = hstack(
             [
@@ -575,6 +589,7 @@ class SlotClassifier(Model):
         return X_feats
 
     def dump(self, f: IO[bytes]) -> None:
+        self.logger.info("[SlotClassifier] Saving model")
         joblib.dump(
             (
                 random.getstate(),
@@ -589,6 +604,7 @@ class SlotClassifier(Model):
         )
 
     def load(self, f: IO[bytes]) -> None:
+        self.logger.info("[SlotClassifier] Loading model")
         (
             random_state,
             self.cls,

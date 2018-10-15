@@ -1,7 +1,10 @@
 import os
+import logging
 from itertools import product
 from typing import Optional, Dict, List, Sequence, Union, Optional, Set, cast
 import os.path
+
+logger = logging.getLogger("dere")  # noqa
 
 
 from dere.corpus import Corpus, Instance
@@ -30,6 +33,7 @@ class BRATCorpusIO(CorpusIO):
             frame_index = 1
             span_index = 1
             indices: Dict[Union[Frame, Span], str] = {}
+
             a2_path = os.path.join(path, doc_id + ".a2")
             if just_predictions:
                 a1_path = text_path = os.devnull
@@ -45,42 +49,47 @@ class BRATCorpusIO(CorpusIO):
                             if span.index is not None:
                                 specified_span_indices.add(span.index)
                     for instance in instances:
-                        print(instance.text, file=text_file, end="")
+                        text_file.write(instance.text)
                         for span in instance.spans:
                             if span.index is None:
                                 while span_index in specified_span_indices:
                                     span_index += 1
                                 span.index = span_index
                                 span_index += 1
-                            print(
-                                "T%d\t%s %d %d\t%s"
+                            annotation_file = a1_file if span.source == 'given' else a2_file
+                            annotation_file.write(
+                                "T%d\t%s %d %d\t%s\n"
                                 % (
                                     span.index,
                                     span.span_type.name,
                                     span.left + offset,
                                     span.right + offset,
                                     span.text,
-                                ),
-                                file=(a1_file if span.source == 'given' else a2_file),
+                                )
                             )
                             indices[span] = "T%d" % span.index
                         for frame in instance.frames:
                             indices[frame] = "E%d" % frame_index
                             frame_index += 1
                         for frame in instance.frames:
-                            # print(frame)
+                            logger.debug("[BRATCorpusIO] Frame: %r", frame)
                             s = indices[frame] + "\t"
                             for slot_type, slot in frame.slots.items():
                                 for filler in slot.fillers:
                                     s += "%s:%s " % (slot_type.name, indices[filler])
-                            print(s[:-1], file=(a1_file if frame.source == 'given' else a2_file))
+                            annotation_file = a1_file if frame.source == 'given' else a2_file
+                            annotation_file.write(s[:-1] + "\n")
                         offset += len(instance.text)
 
     def _populate_corpus(self, corpus: Corpus, path: str, load_gold: bool) -> None:
         doc_id_list = list(
-            {fname[:-3] for fname in os.listdir(path) if fname.endswith(".a1")}
+            {fname[:-4] for fname in os.listdir(path) if fname.endswith(".txt")}
         )
         for cur_id in doc_id_list:
+            a1_filename: Optional[str] = os.path.join(path, (cur_id + ".a1"))
+            assert a1_filename is not None  # thanks mypy...
+            if not os.path.isfile(a1_filename):
+                a1_filename = None
             a2_filename: Optional[str] = None
             if load_gold:
                 a2_filename = os.path.join(path, (cur_id + ".a2"))
@@ -90,7 +99,7 @@ class BRATCorpusIO(CorpusIO):
                 corpus=corpus,
                 textfilename=os.path.join(path, (cur_id + ".txt")),
                 doc_id=cur_id,
-                a1_filename=os.path.join(path, (cur_id + ".a1")),
+                a1_filename=a1_filename,
                 a2_filename=a2_filename,
             )
 
@@ -99,10 +108,12 @@ class BRATCorpusIO(CorpusIO):
         corpus: Corpus,
         textfilename: str,
         doc_id: str,
-        a1_filename: str,
+        a1_filename: Optional[str] = None,
         a2_filename: Optional[str] = None,
     ) -> None:
-        annotation_filenames = [a1_filename]
+        annotation_filenames = []
+        if a1_filename is not None:
+            annotation_filenames.append(a1_filename)
         if a2_filename is not None:
             annotation_filenames.append(a2_filename)
 

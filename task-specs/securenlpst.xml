@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE deREschema SYSTEM "dere.dtd">
+<!-- http://aclweb.org/anthology/P17-1143 , https://competitions.codalab.org/competitions/17262#learn_the_details-->
+<deREschema name="SecureNLP-ST 2018" version="0.01" author="Hendrik Schuff">
+
+  <spans>
+    <!-- Token labels (subtask 2) -->
+    <span name="Subject" predict="True"/>
+    <span name="Action" predict="True"/>
+    <span name="Object" predict="True"/>
+    <span name="Modifier" predict="True"/>
+  </spans>
+
+  <frames>
+    <!-- Relations (subtask 3)-->
+    <frame name="SubjAction">
+      <slot name="Subject" types="span:Subject" cardinality="1"/>
+      <slot name="Action" types="span:Action" cardinality="1"/>
+    </frame>
+    <frame name="ActionObj">
+      <slot name="Action" types="span:Action" cardinality="1"/>
+      <slot name="Object" types="span:Object" cardinality="1"/>
+    </frame>
+    <frame name="ActionMod">
+      <slot name="Action" types="span:Action" cardinality="1"/>
+      <slot name="Modifier" types="span:Modifier" cardinality="1"/>
+    </frame>
+    <frame name="ModObj">
+      <slot name="Modifier" types="span:Modifier" cardinality="1"/>
+      <slot name="Object" types="span:Object" cardinality="1"/>
+    </frame>
+    <frame name="CoRefer">
+      <!-- This relation is not mentioned in the paper, but it is present in the data.
+      I checked some examples of this manually and found sub-obj and obj-sub pairs. -->
+      <slot name="Referer" types="span:Subject, span:Object" cardinality="1"/>
+      <slot name="Canonical" types="span:Subject, span:Object" cardinality="1"/>
+    </frame>
+  </frames>
+</deREschema>

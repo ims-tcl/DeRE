@@ -1,0 +1,23 @@
+<!ELEMENT deREschema (spantypes | frames)*>
+<!ATTLIST deREschema name CDATA #REQUIRED>
+<!ATTLIST deREschema version CDATA #REQUIRED>
+<!ATTLIST deREschema author CDATA #REQUIRED>
+
+<!ELEMENT uniontype EMPTY>
+<!ATTLIST uniontype name CDATA #REQUIRED>
+<!ATTLIST uniontype includes CDATA #REQUIRED>
+<!ELEMENT spantypes (span)*>
+<!ELEMENT frames (frame)*>
+
+<!ATTLIST frame name CDATA #IMPLIED>
+<!ELEMENT frame (slot)*>
+
+<!ELEMENT slot EMPTY>
+<!ATTLIST slot maxcardinality CDATA #IMPLIED>
+<!ATTLIST slot mincardinality CDATA #IMPLIED>
+<!ATTLIST slot name CDATA #REQUIRED>
+<!ATTLIST slot types CDATA #REQUIRED>
+<!ATTLIST slot cardinality CDATA #IMPLIED>
+
+<!ELEMENT span EMPTY>
+<!ATTLIST span name CDATA #IMPLIED>

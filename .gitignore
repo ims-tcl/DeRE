@@ -3,3 +3,4 @@ __pycache__/
 .mypy_cache/
 *.pkl
 tutorial/data/predict/
+.idea/

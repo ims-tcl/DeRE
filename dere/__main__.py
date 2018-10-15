@@ -1,25 +1,49 @@
-import click
-import pickle
-import logging
 import importlib
 import json
 from typing import Optional, Dict, Any, Type
+import logging
+import os
+import pickle
+import sys
+import warnings
+
+
+logger = logging.getLogger("dere")  # noqa
+handler = logging.StreamHandler()  # noqa
+handler.setFormatter(
+    logging.Formatter("[%(levelname)s] %(asctime)s - %(message)s")
+)  # noqa
+logger.addHandler(handler)  # noqa
+logger.propagate = False  # noqa
+
+import click
 
 # path hackery to get imports working as intended
-import sys
-import os
-
 path = os.path.dirname(sys.modules[__name__].__file__)  # noqa
 path = os.path.join(path, "..")  # noqa
 sys.path.insert(0, path)  # noqa
 
+
+# filter warnings from importing sklearn and numpy.
+# sklearn specifically forces warnings to be displayed, which we don't like.
+# https://github.com/scikit-learn/scikit-learn/issues/2531
+def warn(*args, **kwargs):  # noqa
+    pass  # noqa
+
+
+old_warn = warnings.showwarning  # noqa
+warnings.showwarning = warn  # noqa
+
+import dere.taskspec
+from dere.taskspec import TaskSpecification
 from dere.corpus_io import CorpusIO, BRATCorpusIO, CQSACorpusIO
 from dere.models import Model, BaselineModel, NOPModel
 from dere.corpus import Corpus
-import dere.taskspec
-from dere.taskspec import TaskSpecification
 import dere.evaluation
 from dere.evaluation import Result
+
+# restore ability to use warnings
+warnings.showwarning = old_warn
 
 CORPUS_IOS = {"BRAT": BRATCorpusIO, "CQSA": CQSACorpusIO}
 
@@ -52,10 +76,27 @@ def save_model(model: Model, path: str) -> None:
 
 
 @click.group()
-@click.option("--verbosity", default="INFO")
-def cli(verbosity: str) -> None:
+@click.option("--verbose", "-v", is_flag=True, help="Show debug info")
+@click.option(
+    "--quiet", "-q", count=True, help="Do less logging. Can be provided multiple times."
+)
+def cli(verbose: bool, quiet: int) -> None:
+    if verbose and quiet:
+        raise click.BadParameter(
+            "Options --verbose and --quiet are mutually exclusive."
+        )
+    if quiet > 2:
+        quiet = 2
+    # Calculation of verbosity level: verbose --> -1 (DEBUG), quiet --> 1 or 2
+    #                                 neither verbose nor quiet --> 0
+    val = -verbose + quiet
+    # indices:                                                   -1
+    #                  0            1              2             (3)
+    verbosity = [logging.INFO, logging.WARN, logging.ERROR, logging.DEBUG][val]
+    logging.basicConfig(stream=sys.stderr, level=verbosity)
+    if not verbose:
+        warnings.simplefilter("ignore")
     sys.path.append(os.getcwd())
-    logging.basicConfig(stream=sys.stdout, level=getattr(logging, verbosity))
 
 
 @cli.command()
@@ -67,7 +108,12 @@ def build(task_spec: str, model_spec: str, outfile: str) -> None:
 
 
 def _build(task_spec_path: str, model_spec_path: str, out_path: str) -> None:
-    print("building with", task_spec_path, model_spec_path, out_path)
+    logger.info(
+        "[main] Building model with task spec %s and model spec %s, outputting to %s",
+        task_spec_path,
+        model_spec_path,
+        out_path,
+    )
     task_spec = dere.taskspec.load_from_xml(task_spec_path)
     with open(model_spec_path) as sf:
         model_spec = json.load(sf)
@@ -106,7 +152,12 @@ def _train(
     dev_corpus_path: Optional[str],
     corpus_split: Optional[str],
 ) -> None:
-    print("training with", corpus_path, model_path, out_path)
+    logger.info(
+        "[main] Training on corpus %s with model %s, outputting to %s",
+        corpus_path,
+        model_path,
+        out_path,
+    )
     model = load_model(model_path)
 
     corpus_io = CORPUS_IOS[corpus_format](model.task_spec)
@@ -146,7 +197,7 @@ def _predict(
     output_format: Optional[str],
     output_path: str,
 ) -> None:
-    print("predicting with", corpus_path, model_path)
+    logger.info("[main] Predicting on corpus %s and model %s", corpus_path, model_path)
     model = load_model(model_path)
 
     input_corpus_io = CORPUS_IOS[corpus_format](model.task_spec)
@@ -174,15 +225,13 @@ def evaluate(hypo: str, gold: str, task_spec: str, corpus_format: str) -> None:
 
 
 def _evaluate(hypo_path: str, gold_path: str, task_spec_path: str, corpus_format: str) -> None:
-    print("evaluating %s against %s using task specification %s" % (hypo_path, gold_path, task_spec_path))
-
+    logger.info("evaluating %s against %s using task specification %s", hypo_path, gold_path, task_spec_path)
     task_spec = dere.taskspec.load_from_xml(task_spec_path)
     corpus_io = CORPUS_IOS[corpus_format](task_spec)
     hypo = corpus_io.load(hypo_path, True)
     gold = corpus_io.load(gold_path, True)
-
     result = dere.evaluation.evaluate(hypo, gold, task_spec)
-    print(result.report())
+    logger.info("\n" + result.report())  # newline to keep the pretty-printed table
 
 
 cli()

@@ -82,7 +82,6 @@ class BIOSpanModel(Model):
         Returns:
             The normalized token.
         """
-
         return token
 
     def _instance_xys(self, instance: Instance) -> Tuple[List[str], Dict[SpanType, List[str]]]:
