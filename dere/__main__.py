@@ -6,25 +6,31 @@ import sys
 import warnings
 from typing import Optional
 
-logger = logging.getLogger("dere")
-handler = logging.StreamHandler()
-handler.setFormatter(logging.Formatter("[%(levelname)s] %(asctime)s - %(message)s"))
-logger.addHandler(handler)
-logger.propagate = False
+logger = logging.getLogger("dere")  # noqa
+handler = logging.StreamHandler()  # noqa
+handler.setFormatter(
+    logging.Formatter("[%(levelname)s] %(asctime)s - %(message)s")
+)  # noqa
+logger.addHandler(handler)  # noqa
+logger.propagate = False  # noqa
 
 import click
+
 # path hackery to get imports working as intended
 path = os.path.dirname(sys.modules[__name__].__file__)  # noqa
 path = os.path.join(path, "..")  # noqa
 sys.path.insert(0, path)  # noqa
 
+
 # filter warnings from importing sklearn and numpy.
 # sklearn specifically forces warnings to be displayed, which we don't like.
 # https://github.com/scikit-learn/scikit-learn/issues/2531
-def warn(*args, **kwargs):
-    pass
-old_warn = warnings.showwarning
-warnings.showwarning = warn
+def warn(*args, **kwargs):  # noqa
+    pass  # noqa
+
+
+old_warn = warnings.showwarning  # noqa
+warnings.showwarning = warn  # noqa
 
 import dere.taskspec
 from dere.corpus_io import CorpusIO, BRATCorpusIO, CQSACorpusIO
@@ -42,10 +48,14 @@ MODELS = {"baseline": BaselineModel, "nop": NOPModel}
 
 @click.group()
 @click.option("--verbose", "-v", is_flag=True, help="Show debug info")
-@click.option("--quiet", "-q", count=True, help="Do less logging. Can be provided multiple times.")
+@click.option(
+    "--quiet", "-q", count=True, help="Do less logging. Can be provided multiple times."
+)
 def cli(verbose: bool, quiet: int) -> None:
     if verbose and quiet:
-        raise click.BadParameter("Options --verbose and --quiet are mutually exclusive.")
+        raise click.BadParameter(
+            "Options --verbose and --quiet are mutually exclusive."
+        )
     if quiet > 2:
         quiet = 2
     # Calculation of verbosity level: verbose --> -1 (DEBUG), quiet --> 1 or 2
@@ -57,6 +67,7 @@ def cli(verbose: bool, quiet: int) -> None:
     logging.basicConfig(stream=sys.stderr, level=verbosity)
     if not verbose:
         warnings.simplefilter("ignore")
+
 
 @cli.command()
 @click.option("--model", default="baseline")
@@ -110,7 +121,12 @@ def _train(
     dev_corpus_path: Optional[str],
     corpus_split: Optional[str],
 ) -> None:
-    logger.info("[main] Training on corpus %s with model %s, outputting to %s", corpus_path, model_path, out_path)
+    logger.info(
+        "[main] Training on corpus %s with model %s, outputting to %s",
+        corpus_path,
+        model_path,
+        out_path,
+    )
     with open(model_path, "rb") as f:
         model = pickle.load(f)
 

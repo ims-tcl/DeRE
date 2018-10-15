@@ -3,6 +3,7 @@ from typing import Sequence, Generator, TypeVar
 
 T = TypeVar("T")
 
+
 def progressify(seq: Sequence[T], string: str = "") -> Generator[T, None, None]:
     """
     Display a progress bar in the terminal while iterating over a sequence.

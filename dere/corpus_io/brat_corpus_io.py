@@ -4,7 +4,7 @@ from itertools import product
 from typing import Optional, Dict, List, Sequence, Union, Optional, Set, cast
 import os.path
 
-logger = logging.getLogger("dere")
+logger = logging.getLogger("dere")  # noqa
 
 
 from dere.corpus import Corpus, Instance
