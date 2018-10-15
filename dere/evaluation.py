@@ -11,7 +11,7 @@ from dere.corpus import Corpus, Instance, Frame, Span
 _SFType = Union[SpanType, FrameType]
 
 
-def evaluate_instances(hypo: List[Instance], gold: List[Instance], task_spec: TaskSpecification) -> Result:
+def _evaluate_document(hypo: List[Instance], gold: List[Instance], task_spec: TaskSpecification) -> Result:
     r = Result(task_spec)
     hypo_spans: List[Span] = []
     for instance in hypo:
@@ -91,6 +91,23 @@ def evaluate_instances(hypo: List[Instance], gold: List[Instance], task_spec: Ta
 
 
 def evaluate(hypo: Corpus, gold: Corpus, task_spec: TaskSpecification) -> Result:
+    """
+    Evaluate a corpus containing model predictions against a corpus containing gold-standard annotations
+    according to a supplied task-spec.
+
+    Args:
+        hypo: The hypothesis corpus, containing model predictions.
+        gold: The corpus containing gold-standard annotation data.
+
+    Returns:
+        A Result object representing the evaluation results.
+    """
+
+    # TODO(Sean): Maybe supply a single corpus object, which contains both predicted and gold frames and
+    # spans, but with different .source attributes?  Revisit this later to see if this would be a good
+    # idea
+
+    # TODO(Sean): Add support for different styles of soft evaluation
     hypo_docs: Dict[str, List[Instance]] = defaultdict(list)
     for hypo_instance in hypo.instances:
         hypo_docs[hypo_instance.document_id].append(hypo_instance)
@@ -103,7 +120,7 @@ def evaluate(hypo: Corpus, gold: Corpus, task_spec: TaskSpecification) -> Result
 
     result = Result(task_spec)
     for hypo_instances, gold_instances in doc_pairs:
-        result |= evaluate_instances(hypo_instances, gold_instances, task_spec)
+        result |= _evaluate_document(hypo_instances, gold_instances, task_spec)
     return result
 
 
@@ -135,13 +152,35 @@ def _string_table(table: List[Union[List[Any], str]], padding: int = 2) -> str:
 
 @total_ordering
 class Result:
+    """
+    Result objects represent evaluation results. They keep track of true positives, false positives, and false
+    negatives for frame and span evaluation, and can thus compute precision, recall, and fscore of a given
+    evaluation. They are also comparable, and so the results of two evaluations can be compared -- The default
+    comparison metric is f1 score on frame evaluation, with f1-score on span evaluation as a fallback.
+    """
     def __init__(self, task_spec: TaskSpecification) -> None:
+        """
+        Create an empty result with no true positives, false positives, or false negatives.
+
+        Args:
+            task_spec: The TaskSpecification of the model being evaluated
+        """
         self.task_spec = task_spec
         self.true_positives: Dict[_SFType, int] = defaultdict(int)
         self.false_positives: Dict[_SFType, int] = defaultdict(int)
         self.false_negatives: Dict[_SFType, int] = defaultdict(int)
 
     def tp(self, cls: Union[_SFType, Collection[_SFType]]) -> int:
+        """
+        Count true positives for a SpanType, FrameType, or collection thereof.
+
+        Args:
+            cls: Either the SpanType or FrameType to count true positives for, or a collection of SpanTypes
+            and FrameTypes, in which case counts for all elements are summed.
+
+        Returns:
+            The number of true positives.
+        """
         if not isinstance(cls, Collection):
             cls = [cls]
         n = 0
@@ -150,6 +189,17 @@ class Result:
         return n
 
     def fp(self, cls: Union[_SFType, Collection[_SFType]]) -> int:
+        """
+        Count false positives for a SpanType, FrameType, or collection thereof.
+
+        Args:
+            cls: Either the SpanType or FrameType to count false positives for, or a collection of SpanTypes
+                and FrameTypes, in which case counts for all elements are summed.
+
+        Returns:
+            The number of false positives.
+        """
+
         if not isinstance(cls, Collection):
             cls = [cls]
         n = 0
@@ -158,6 +208,16 @@ class Result:
         return n
 
     def fn(self, cls: Union[_SFType, Collection[_SFType]]) -> int:
+        """
+        Count false negatives for a SpanType, FrameType, or collection thereof.
+
+        Args:
+            cls: Either the SpanType or FrameType to count false negatives for, or a collection of SpanTypes
+                and FrameTypes, in which case counts for all elements are summed.
+
+        Returns:
+            The number of false negatives.
+        """
         if not isinstance(cls, Collection):
             cls = [cls]
         n = 0
@@ -166,6 +226,16 @@ class Result:
         return n
 
     def precision(self, cls: Union[_SFType, Collection[_SFType]]) -> float:
+        """
+        Compute precision for a SpanType of FrameType, or micro-averaged precision for a collection thereof.
+
+        Args:
+            cls: Either a SpanType or FrameType, or a collection of SpanTypes and FrameTypes, in which case
+                micro-averaged precision will be computed.
+
+        Returns:
+            The precision, or zero if there were no true positives and no false positives
+        """
         tp = self.tp(cls)
         if tp == 0:
             return 0
@@ -173,6 +243,17 @@ class Result:
             return tp / (tp + self.fp(cls))
 
     def recall(self, cls: Union[_SFType, Collection[_SFType]]) -> float:
+        """
+        Compute recall for a SpanType of FrameType, or micro-averaged recall for a collection thereof.
+
+        Args:
+            cls: Either a SpanType or FrameType, or a collection of SpanTypes and FrameTypes, in which case
+                micro-averaged recall will be computed.
+
+        Returns:
+            The recall, or zero if there were no true positives and no false negatives
+        """
+
         tp = self.tp(cls)
         if tp == 0:
             return 0
@@ -180,6 +261,19 @@ class Result:
             return tp / (tp + self.fn(cls))
 
     def fscore(self, cls: Union[_SFType, Collection[_SFType]], beta: float = 1) -> float:
+        """
+        Compute the :math:`F_{\beta}` score for a SpanType of FrameType, or the micro-averaged
+        :math:`F_{\beta}` score for a collection thereof.
+
+        Args:
+            cls: Either a SpanType or FrameType, or a collection of SpanTypes and FrameTypes, in which case
+                the micro-averaged :math:`F_{\beta}` score will be computed.
+            beta: The beta parameter.
+
+        Returns:
+            The precision, or zero if there were no true positives and no false positives
+        """
+
         b2 = beta**2
         if b2 == 0:
             return self.recall(cls)
@@ -191,7 +285,18 @@ class Result:
             return 0
         return (1+b2) / (b2/precision + 1/recall)
 
-    def __or__(self, other: Result) -> Result:
+    def union(self, other: Result) -> Result:
+        """
+        Returns the union of this Result and another Result.  True positive, false positive, and false
+        negative cocunts of the union are just the sum of this Result's and the other's. Neither original
+        result object is modified.
+
+        Args:
+            other: The other Result with which to take the union.
+
+        Returns:
+            The union of this Result and the other Result.
+        """
         assert self.task_spec == other.task_spec
         r = Result(self.task_spec)
         sftypes: Tuple[_SFType, ...] = self.task_spec.span_types
@@ -201,6 +306,9 @@ class Result:
             r.false_positives[sf_type] = self.false_positives[sf_type] + other.false_positives[sf_type]
             r.false_negatives[sf_type] = self.false_negatives[sf_type] + other.false_negatives[sf_type]
         return r
+
+    def __or__(self, other: Result) -> Result:
+        return self.union(other)
 
     def __eq__(self, other: Any) -> bool:
         if not isinstance(other, Result):
@@ -219,6 +327,12 @@ class Result:
             return sf < of
 
     def report(self) -> str:
+        """
+        Return a pretty-printed report, showing statistics for each SpanType and FrameType.
+
+        Returns:
+            A string containing the report, rendered as an ascii-art table.
+        """
         def row(cls: Union[_SFType, Collection[_SFType]], label: str) -> List[Any]:
             tp = self.tp(cls)
             fp = self.fp(cls)
