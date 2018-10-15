@@ -89,6 +89,7 @@ class SlotClassifier:
             self.cls = LinearSVC(max_iter=10000)
             self.cls.fit(x, y)
         else:
+            x_dev, y_dev, _ = self.get_features_and_labels(dev_corpus)
             best_f1 = -1.0
             best_c = 0.0
             best_cls = None
@@ -97,7 +98,7 @@ class SlotClassifier:
                 self.cls = LinearSVC(C=c_param, class_weight="balanced", max_iter=10000)
                 self.cls.fit(x, y)
                 self.logger.debug("current c: " + str(c_param))
-                micro_f1 = self.evaluate(dev_corpus)
+                micro_f1 = self.evaluate(dev_corpus, x_dev, y_dev)
                 if micro_f1 > best_f1:
                     best_c = c_param
                     best_cls = copy.deepcopy(self.cls)
@@ -205,12 +206,19 @@ class SlotClassifier:
                             new_frame.remove()
                             break
 
-    def evaluate(self, corpus: Corpus) -> float:
+    def evaluate(
+        self, corpus: Corpus, x: Optional[spmatrix] = None, y_gold: Optional[np.ndarray] = None
+    ) -> float:
 
         """This function evaluates only the slot classifier, assuming
         the correct spans in gold"""
 
-        x, y_gold, _ = self.get_features_and_labels(corpus)
+        if x is None:
+            x, y_gold, _ = self.get_features_and_labels(corpus)
+
+        assert isinstance(x, spmatrix)
+        assert isinstance(y_gold, np.ndarray)
+
         y_pred = self.cls.predict(x)
         prec, reca, f1, supp = precision_recall_fscore_support(
             y_gold,

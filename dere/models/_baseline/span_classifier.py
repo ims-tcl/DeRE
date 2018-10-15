@@ -109,27 +109,19 @@ class SpanClassifier:
                 Setup = TypedDict("Setup", {"aps": bool, "c2v": float})
                 best_setup: Setup = {"c2v": 0.001, "aps": True}
                 stopTraining = False
-                for aps in [True, False]:
+                aps_possibilities = [True, False]
+                c2v_possibilities = [0.001, 0.01, 0.1, 0.3, 0.5, 0.6, 0.9,
+                                     0.99, 1.0, 1.3, 1.6, 3.0, 6.0, 10.0]
+                num_hyperparam_combination = len(aps_possibilities) * len(c2v_possibilities)
+                index = 0
+                for aps in aps_possibilities:
                     if stopTraining:
                         break
-                    for c2v in [
-                        0.001,
-                        0.01,
-                        0.1,
-                        0.3,
-                        0.5,
-                        0.6,
-                        0.9,
-                        0.99,
-                        1.0,
-                        1.3,
-                        1.6,
-                        3.0,
-                        6.0,
-                        10.0,
-                    ]:
+                    for c2v in c2v_possibilities:
                         if stopTraining:
                             break
+                        index += 1
+                        self.logger.info(str(index) + "/" + str(num_hyperparam_combination))
                         cur_setup: Setup = {"aps": aps, "c2v": c2v}
                         self.logger.debug("Current setup: " + str(cur_setup))
                         crf = CRF(
@@ -160,14 +152,14 @@ class SpanClassifier:
                 )
                 crf.fit(X_train_all, target_all)
                 self.target2classifier[t.name] = crf
-                self.logger.info("Finished training")
+            self.logger.info("Finished training")
 
     def evaluate(
         self, classifier: CRF, X_dev: List[List[Features]], y_dev: List[List[str]]
     ) -> float:
         y_pred = classifier.predict(X_dev)
         try:
-            self.logger.info(
+            self.logger.debug(
                 metrics.flat_classification_report(
                     y_dev, y_pred, labels=["I", "B"], digits=3
                 )
