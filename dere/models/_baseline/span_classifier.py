@@ -70,7 +70,7 @@ class SpanClassifier:
         if dev_corpus is not None:
             X_dev = self.get_features(dev_corpus)
 
-        self.logger.info(
+        self.logger.debug(
             "target span types: " + str([st.name for st in self.target_span_types])
         )
 
@@ -87,7 +87,7 @@ class SpanClassifier:
                 aps = True
                 c2v = 0.1
                 default_setup = {"aps": aps, "c2v": c2v}
-                self.logger.info(
+                self.logger.debug(
                     "No dev corpus given. Using setup: " + str(default_setup)
                 )
                 crf = CRF(
@@ -103,6 +103,7 @@ class SpanClassifier:
                 X_dev2 = self.get_span_type_specific_features(dev_corpus, t)
                 X_dev_merged = self.merge_features(X_dev, X_dev2)
                 y_dev = self.get_binary_labels(dev_corpus, t, use_bio=True)
+                self.logger.info("Starting grid search")
                 # optimize on dev
                 best_f1 = -1.0
                 Setup = TypedDict("Setup", {"aps": bool, "c2v": float})
@@ -130,7 +131,7 @@ class SpanClassifier:
                         if stopTraining:
                             break
                         cur_setup: Setup = {"aps": aps, "c2v": c2v}
-                        self.logger.info("Current setup: " + str(cur_setup))
+                        self.logger.debug("Current setup: " + str(cur_setup))
                         crf = CRF(
                             algorithm="l2sgd",
                             all_possible_transitions=True,
@@ -147,12 +148,6 @@ class SpanClassifier:
                         if micro_f1 == 1.0:  # cannot get better
                             stopTraining = True
                 self.logger.info("Best setup: " + str(best_setup))
-                with open("best_parameters_span", 'a') as out:
-                    out.write(t.name)
-                    out.write("\n")
-                    for k, v in best_setup.items():
-                        out.write(str(k) + "\t" + str(v) + "\n")
-                    out.write("\n")
                 self.logger.info("Retraining best setup with all available data")
                 X_train_all = X_train_merged + X_dev_merged
                 target_all = target_t + y_dev
@@ -165,6 +160,7 @@ class SpanClassifier:
                 )
                 crf.fit(X_train_all, target_all)
                 self.target2classifier[t.name] = crf
+                self.logger.info("Finished training")
 
     def evaluate(
         self, classifier: CRF, X_dev: List[List[Features]], y_dev: List[List[str]]
@@ -181,7 +177,7 @@ class SpanClassifier:
         micro_f1 = metrics.flat_f1_score(
             y_dev, y_pred, average="micro", labels=["I", "B"]
         )
-        self.logger.info("micro F1: " + str(micro_f1))
+        self.logger.debug("micro F1: " + str(micro_f1))
         return micro_f1
 
     def predict(self, corpus: Corpus) -> None:
@@ -364,13 +360,6 @@ class SpanClassifier:
                 else:
                     features["EOS"] = True
 
-                # for key in features:
-                #    if isinstance(features[key], bool):
-                #        if features[key]:
-                #            features[key] = "1"
-                #        else:
-                #            features[key] = "0"
-
                 instance_feature_list.append(features)
 
             feature_list.append(instance_feature_list)
@@ -414,10 +403,6 @@ class SpanClassifier:
                 current_span_left: Optional[int] = None
                 current_span_right = 0
                 for token, label in zip(instance_tokens, instance_predictions):
-                    if label != "O":
-                        d_msg = "token: " + str(token) + "\t" + str(instance.text[token[0]:token[1]])
-                        d_msg += "\t" + "label: " + str(target_span_type)
-                        self.logger.debug(d_msg)
                     if current_span_left is not None and label in "BO":
                         instance.new_span(
                             target_span_type,

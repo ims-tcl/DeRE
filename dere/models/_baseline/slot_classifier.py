@@ -83,6 +83,8 @@ class SlotClassifier:
 
         x, y = self.shuffle(x_tmp, y_tmp)
 
+        self.logger.info("Using " + str(x.shape[0]) + " instances for training")
+
         if dev_corpus is None:
             self.cls = LinearSVC(max_iter=10000)
             self.cls.fit(x, y)
