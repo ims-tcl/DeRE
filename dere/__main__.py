@@ -71,6 +71,9 @@ def _build(task_spec_path: str, model_spec_path: str, out_path: str) -> None:
     task_spec = dere.taskspec.load_from_xml(task_spec_path)
     with open(model_spec_path) as sf:
         model_spec = json.load(sf)
+        # TODO Sean: Is there a better way to do this?
+        # I want to allow relative paths in the model spec to be relative to the model spec file's location
+        model_spec['__path__'] = model_spec_path
 
     model = instantiate_model(task_spec, model_spec)
     model.initialize()

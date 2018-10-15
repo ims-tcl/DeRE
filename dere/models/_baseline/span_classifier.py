@@ -36,7 +36,9 @@ class SpanClassifier(Model):
         self.target_span_types = list(task_spec.span_types)
         self.gazetteer: Dict[str, Set[str]] = {}
         if gazetteer is not None:
-            self.read_gazetteer(gazetteer)
+            model_spec_dir = os.path.join(*os.path.split(model_spec['__path__'])[:-1])
+            gazetteer_path = os.path.join(model_spec_dir, gazetteer)
+            self.read_gazetteer(gazetteer_path)
         self.logger = logging.getLogger(__name__)
         self.target2classifier: Dict[str, CRF] = {}
         self.ps = PorterStemmer()
