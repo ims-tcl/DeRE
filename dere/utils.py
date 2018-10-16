@@ -1,10 +1,10 @@
 import sys
-from typing import Sequence, Generator, TypeVar
+from typing import Sequence, Iterator, TypeVar, Union, Callable
 
 T = TypeVar("T")
 
 
-def progressify(seq: Sequence[T], string: str = "", *, calc: str = "") -> Generator[T, None, None]:
+def progressify(seq: Sequence[T], message: Union[str, Callable[[int, T], str]] = "") -> Iterator[T]:
     """
     Display a progress bar in the terminal while iterating over a sequence.
 
@@ -26,15 +26,13 @@ def progressify(seq: Sequence[T], string: str = "", *, calc: str = "") -> Genera
 
     Args:
         seq: The sequence of elements to iterate over (often a list).
-        string: An optional message that can be printed along with the bar. It
-            can contain the special sequences starting with a percent sign that
-            will be replaced by various values:
+        string: An optional message that can be printed along with the bar. If it
+            is a string, it will be printed, with special sequences starting with
+            a percent sign replaced by various values:
                 %i    Index (starting from 0)
                 %e    Current element
-                %c    Result of calculation (see below)
-        calc: An optional argument that contains a string that will be
-            evaluated at every step of the iteration. It is then used to
-            replace the special sequence %c.
+            If it is a callable, it will be called with (index, current_element)
+            as arguments, and its return value will be printed
 
     Yields:
         The elements from seq.
@@ -47,6 +45,20 @@ def progressify(seq: Sequence[T], string: str = "", *, calc: str = "") -> Genera
             for y in progressify(range(3), "step %c/6", calc=f"{x}*3+%i+1"):
                 pass # e.g. "[▓▓░] step 5/6" when x==1 and y==2
     """
+    if isinstance(message, str):
+        format_str = message
+
+        def message(i: int, element: T) -> str:
+            # map special sequences to special values
+            replacements = {
+                "%i": i,
+                "%e": element,
+            }
+            # copies so we evaluate this at every step
+            for key in replacements:
+                s = format_str.replace(key, str(replacements[key]))
+            return s
+    assert not isinstance(message, str)
     try:
         print("\033[?25l")  # hide the cursor
         length = len(seq)
@@ -58,23 +70,11 @@ def progressify(seq: Sequence[T], string: str = "", *, calc: str = "") -> Genera
                 i_chars = int(i * maxlen/length)
             else:
                 i_chars = i
-            # map special sequences to special values
-            replacements = {
-                "%i": i,
-                "%e": element,
-            }
-            # copies so we evaluate this at every step
-            s, c = string, calc
-            for key in replacements:
-                s = s.replace(key, str(replacements[key]))
-                c = c.replace(key, str(replacements[key]))
-            if c:
-                s = s.replace("%c", str(eval(c)))
             print(
                 "\r[{}{}] {}".format(
                     "▓"*(i_chars+1),
                     "░"*((length if length <= maxlen else maxlen)-i_chars-1),
-                    s,
+                    message(i, element),
                 ),
                 file=sys.stderr,
                 flush=True,  # to see the updated bar immediately

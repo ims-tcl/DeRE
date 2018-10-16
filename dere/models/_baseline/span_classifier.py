@@ -122,8 +122,11 @@ class SpanClassifier:
                         break
                     for c2v in progressify(
                         c2v_possibilities,
-                        f"c2v value: %e %c/{num_hyperparam_combination}  ",
-                        calc=f"{aps_index}*{len(c2v_possibilities)}+%i+1",
+                        lambda i, val: ("c2v value: %f | %d/%d" % (
+                            val,
+                            aps_index * len(c2v_possibilities) + i + 1,
+                            num_hyperparam_combination
+                        ))
                     ):
                         if stopTraining:
                             break
