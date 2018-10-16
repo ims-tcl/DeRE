@@ -45,7 +45,7 @@ def test_frame_remove():
 def test_span_bad_values():
     with pytest.raises(ValueError):
         # left has to be <= right
-        Span("spantype", 86, 37, None)
+        Span("spantype", 86, 37, None, None)
 
 
 def test_span_text():
@@ -56,7 +56,7 @@ def test_span_text():
 
 
 def test_span_remove():
-    s = Span("spantype", 1, 2, MockInstance(spans=[1, 2, 3]))
+    s = Span("spantype", 1, 2, MockInstance(spans=[1, 2, 3]), None)
     s.instance.spans.append(s)
     assert len(s.instance.spans) == 4
     s.remove()

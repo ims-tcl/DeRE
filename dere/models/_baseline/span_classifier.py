@@ -15,6 +15,7 @@ from nltk.tokenize import TreebankWordTokenizer
 
 from dere.taskspec import TaskSpecification, SpanType
 from dere.corpus import Corpus, Instance, Span
+from dere.utils import progressify
 
 from sklearn.externals import joblib
 
@@ -32,7 +33,7 @@ class SpanClassifier:
         self.target_span_types = list(spec.span_types)
         self.gazetteer: Dict[str, Set[str]] = {}
         self.read_gazetteer(gazetteer_filename)
-        self.logger = logging.getLogger(__name__)
+        self.logger = logging.getLogger("dere")
         self.target2classifier: Dict[str, CRF] = {}
         self.ps = PorterStemmer()
         # @Sean: TODO: read from spec which spans are given (if any)
@@ -46,6 +47,7 @@ class SpanClassifier:
             if t in self.given_span_types:  # no need to predict given spans
                 self.target_span_types.remove(t)
         # initialize everything necessary
+        self.logger.debug("[SpanClassifier] initialized successfully")
 
     def shuffle(self, X: List, y: List) -> Tuple[List, List]:
         indices = [i for i in range(len(X))]
@@ -62,39 +64,42 @@ class SpanClassifier:
         corpus_train: Corpus,
         dev_corpus: Optional[Corpus] = None,
     ) -> None:
-        self.logger.info("extracting features")
+        self.logger.info("[SpanClassifier] Extracting features...")
         X_train = self.get_features(corpus_train)
+        self.logger.info("[SpanClassifier] Extracting features done")
 
-        self.logger.info("using " + str(len(X_train)) + " sentences for training")
+        self.logger.debug("[SpanClassifier] using " + str(len(X_train)) + " sentences for training")
 
         if dev_corpus is not None:
+            self.logger.info("[SpanClassifier] Extracting features from dev corpus...")
             X_dev = self.get_features(dev_corpus)
+            self.logger.info("[SpanClassifier] Extracting features from dev corpus done")
 
-        self.logger.debug(
-            "target span types: " + str([st.name for st in self.target_span_types])
+        self.logger.info(
+            "[SpanClassifier] target span types: " + str([st.name for st in self.target_span_types])
         )
 
+        Setup = TypedDict("Setup", {"aps": bool, "c2v": float})
+        default_setup: Setup = {"aps": True, "c2v": 0.1}
+        if dev_corpus is None:
+            self.logger.warning(
+                "[SpanClassifier] No dev corpus given. Using setup: " + str(default_setup)
+            )
         for t in self.target_span_types:
             X_train2 = self.get_span_type_specific_features(corpus_train, t)
             X_train_merged = self.merge_features(X_train, X_train2)
-            self.logger.info("Optimizing classifier for class " + str(t))
+            self.logger.debug("[SpanClassifier] Optimizing classifier for class " + str(t))
             target_t = self.get_binary_labels(corpus_train, t, use_bio=True)
-            self.logger.debug(target_t)
+            self.logger.debug("[SpanClassifier] %r", target_t)
 
             X_train_merged, target_t = self.shuffle(X_train_merged, target_t)
 
             if dev_corpus is None:
-                aps = True
-                c2v = 0.1
-                default_setup = {"aps": aps, "c2v": c2v}
-                self.logger.debug(
-                    "No dev corpus given. Using setup: " + str(default_setup)
-                )
                 crf = CRF(
                     algorithm="l2sgd",
                     all_possible_transitions=True,
-                    all_possible_states=aps,
-                    c2=c2v,
+                    all_possible_states=default_setup["aps"],
+                    c2=default_setup["c2v"],
                 )
                 crf.fit(X_train_merged, target_t)
                 self.target2classifier[t.name] = crf
@@ -106,7 +111,6 @@ class SpanClassifier:
                 self.logger.info("Starting grid search")
                 # optimize on dev
                 best_f1 = -1.0
-                Setup = TypedDict("Setup", {"aps": bool, "c2v": float})
                 best_setup: Setup = {"c2v": 0.001, "aps": True}
                 stopTraining = False
                 aps_possibilities = [True, False]
@@ -117,13 +121,13 @@ class SpanClassifier:
                 for aps in aps_possibilities:
                     if stopTraining:
                         break
-                    for c2v in c2v_possibilities:
+                    for c2v in progressify(c2v_possibilities, "c2v value: %i"):
                         if stopTraining:
                             break
                         index += 1
                         self.logger.info(str(index) + "/" + str(num_hyperparam_combination))
                         cur_setup: Setup = {"aps": aps, "c2v": c2v}
-                        self.logger.debug("Current setup: " + str(cur_setup))
+                        self.logger.debug("[SpanClassifier] Current setup: " + str(cur_setup))
                         crf = CRF(
                             algorithm="l2sgd",
                             all_possible_transitions=True,
@@ -139,8 +143,14 @@ class SpanClassifier:
                             best_f1 = micro_f1
                         if micro_f1 == 1.0:  # cannot get better
                             stopTraining = True
-                self.logger.info("Best setup: " + str(best_setup))
-                self.logger.info("Retraining best setup with all available data")
+                self.logger.info("[SpanClassifier] Best setup: " + str(best_setup))
+                with open("best_parameters_span", 'a') as out:
+                    out.write(t.name)
+                    out.write("\n")
+                    for k, v in best_setup.items():
+                        out.write(str(k) + "\t" + str(v) + "\n")
+                    out.write("\n")
+                self.logger.info("[SpanClassifier] Retraining best setup with all available data")
                 X_train_all = X_train_merged + X_dev_merged
                 target_all = target_t + y_dev
                 X_train_all, target_all = self.shuffle(X_train_all, target_all)
@@ -160,6 +170,7 @@ class SpanClassifier:
         y_pred = classifier.predict(X_dev)
         try:
             self.logger.debug(
+                "[SpanClassifier] %s",
                 metrics.flat_classification_report(
                     y_dev, y_pred, labels=["I", "B"], digits=3
                 )
@@ -169,7 +180,7 @@ class SpanClassifier:
         micro_f1 = metrics.flat_f1_score(
             y_dev, y_pred, average="micro", labels=["I", "B"]
         )
-        self.logger.debug("micro F1: " + str(micro_f1))
+        self.logger.debug("[SpanClassifier] micro F1: " + str(micro_f1))
         return micro_f1
 
     def predict(self, corpus: Corpus) -> None:
@@ -178,21 +189,21 @@ class SpanClassifier:
 
         if self.target_span_types is None:
             self.logger.error(
-                "target span types are not initialized. Use train function"
+                "[SpanClassifier] target span types are not initialized. Use train function"
                 + " first or load existing model to initialize it"
             )
             return []
         X_test = self.get_features(corpus)
         predictions = {}
         for t in self.target_span_types:
-            self.logger.debug(t)
+            self.logger.debug("[SpanClassifer] %r", t)
             X_test2 = self.get_span_type_specific_features(corpus, t)
             X_test_merged = self.merge_features(X_test, X_test2)
             y_pred = self.target2classifier[t.name].predict(X_test_merged)
             for X_item, y_item in zip(X_test_merged, y_pred):
-                self.logger.debug(X_item)
-                self.logger.debug(y_item)
-            self.logger.debug("-----")
+                self.logger.debug("[SpanClassifier] %r", X_item)
+                self.logger.debug("[SpanClassifier] %r", y_item)
+            self.logger.debug("[SpanClassifier] -----")
             predictions[t.name] = y_pred
         self.prepare_results(predictions, corpus)
 
@@ -326,7 +337,7 @@ class SpanClassifier:
 
     def get_features(self, corpus: Corpus) -> List[List[Features]]:
         feature_list = []
-        for instance in corpus.instances:
+        for instance in progressify(corpus.instances, "getting features"):
             instance_text = instance.text.replace('"', "'")
             instance.text = instance_text
             token_spans = list(word_tokenizer.span_tokenize(instance_text))
@@ -386,6 +397,7 @@ class SpanClassifier:
     def prepare_results(
         self, predictions: Dict[str, List[List[str]]], corpus: Corpus
     ) -> None:
+        self.logger.info("[SpanClassifier] Preparing results...")
         for i, instance in enumerate(corpus.instances):
             instance_text = instance.text.replace('"', "'")
             instance.text = instance_text
@@ -395,6 +407,10 @@ class SpanClassifier:
                 current_span_left: Optional[int] = None
                 current_span_right = 0
                 for token, label in zip(instance_tokens, instance_predictions):
+                    if label != "O":
+                        d_msg = "token: " + str(token) + "\t" + str(instance.text[token[0]:token[1]])
+                        d_msg += "\t" + "label: " + str(target_span_type)
+                        self.logger.debug("[SpanClassifier] %r", d_msg)
                     if current_span_left is not None and label in "BO":
                         instance.new_span(
                             target_span_type,
@@ -412,3 +428,4 @@ class SpanClassifier:
                             current_span_left,
                             current_span_right,
                     )
+        self.logger.info("[SpanClassifier] Preparing results done")
