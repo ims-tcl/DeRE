@@ -23,13 +23,17 @@ class CQSACorpusIO(CorpusIO):
                 )
         else:
             paths = [path]
+            path = "/".join(path.split("/")[:-1])
         corpus = Corpus()
-        for path in paths:
-            self._populate_corpus_from_file(corpus, path)
+        for file_path in paths:
+            self._populate_corpus_from_file(corpus, path, file_path)
         return corpus
 
-    def _populate_corpus_from_file(self, corpus: Corpus, path: str) -> None:
-        doc_id, _ = path.rsplit(".", 1)
+    def _populate_corpus_from_file(self, corpus: Corpus, root_path: str, path: str) -> None:
+        relative_path = path[len(root_path):]
+        while relative_path.startswith("/"):
+            relative_path = relative_path[1:]
+        doc_id, _ = relative_path.rsplit(".", 1)
         tree = ET.parse(path)
         root = tree.getroot()
         # self._construct_instance(corpus, root, doc_id)
@@ -60,12 +64,12 @@ class CQSACorpusIO(CorpusIO):
             span = None
             span_type = self._spec.span_type_lookup(child.tag)
             if span_type is not None:
-                span = instance.new_span(span_type, left, right)
+                span = instance.new_span(span_type, left, right, "gold")
                 instance.spans.append(span)
                 ids[child.attrib["id"]] = span
             frame_type = self._spec.frame_type_lookup(child.tag)
             if frame_type is not None:
-                frame = instance.new_frame(frame_type)
+                frame = instance.new_frame(frame_type, "gold")
                 if span is not None:
                     slot = frame.slot_lookup(frame_type.name)
                     if slot is not None:

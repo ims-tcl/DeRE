@@ -1,0 +1,10 @@
+{
+    "model_type": "BaselineModel",
+    "params": {
+        "span_classifier": {
+            "gazetteer": "training_gazetteer_bionlp"
+        },
+        "slot_classifier": {
+        }
+    }
+}

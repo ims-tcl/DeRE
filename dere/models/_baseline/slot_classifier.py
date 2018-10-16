@@ -1,11 +1,15 @@
 # Author: Laura
+from __future__ import annotations
+
 import copy
 import logging
 import random
+import pickle
 
 from itertools import chain, combinations, product
 from operator import mul
-from typing import Optional, Dict, Tuple, List, Set, Any, Union, cast, Sequence
+from typing import Optional, Dict, Tuple, List, Set, Any, Union, cast, Sequence, IO
+from mypy_extensions import TypedDict
 
 import networkx as nx
 import numpy as np
@@ -24,9 +28,9 @@ from sklearn.externals import joblib
 from scipy.sparse import hstack, csr_matrix, spmatrix, vstack
 from sklearn.utils import shuffle
 
-from dere import Result
 from dere.corpus import Corpus, Instance, Frame, Span, Slot, Filler
 from dere.taskspec import TaskSpecification, FrameType, SpanType, SlotType
+from dere.models import Model
 from dere.utils import progressify
 
 try:
@@ -46,16 +50,22 @@ Arc = Tuple[FrameType, SlotType]
 _ArrayLike = Union[List, np.ndarray, spmatrix]
 
 
-class SlotClassifier:
-    def __init__(self, spec: TaskSpecification) -> None:
+class SlotClassifier(Model):
+    def __init__(
+            self, task_spec: TaskSpecification, model_spec: Dict[str, Any],
+            seed: int = 98765
+    ) -> None:
+        super().__init__(task_spec, model_spec)
+        self.seed = seed
+
+        # TODO(Sean) move this to model.__init__
         self.logger = logging.getLogger("dere")
-        self._spec = spec
-        random.seed(98765)
+
         # Find our plausible relations from the spec
         self.plausible_relations: Dict[Tuple[SpanType, SpanType], List[Edge]] = {}
         labels: Set[Any] = {"Nothing"}
         # For every span type that triggers a frame
-        for frame_type in spec.frame_types:
+        for frame_type in task_spec.frame_types:
             anchor_slot_type = self._frame_type_anchor(frame_type)
             for anchor_span_type in anchor_slot_type.types:
                 if not isinstance(anchor_span_type, SpanType):
@@ -74,6 +84,14 @@ class SlotClassifier:
         self.logger.debug(
             "[SlotClassifier] plausible relations for slot classifier: " + str(self.plausible_relations)
         )
+
+    def initialize(self) -> None:
+        random.seed(self.seed)
+        self.cls: Optional[LinearSVC] = None
+        self.cv_text: Optional[CountVectorizer] = None
+        self.cv_labels: Optional[CountVectorizer] = None
+        self.cv_deps_words: Optional[CountVectorizer] = None
+        self.cv_sequence_text: Optional[CountVectorizer] = None
 
     def shuffle(self, X: _ArrayLike, y: _ArrayLike) -> Tuple[_ArrayLike, _ArrayLike]:
         X_shuffled, y_shuffled = shuffle(X, y, random_state=1111)
@@ -99,7 +117,7 @@ class SlotClassifier:
                 self.cls = LinearSVC(C=c_param, class_weight="balanced", max_iter=10000)
                 self.cls.fit(x, y)
                 self.logger.debug("[SlotClassifier] current c: " + str(c_param))
-                micro_f1 = self.evaluate(dev_corpus)
+                micro_f1 = self._eval(dev_corpus)
                 if micro_f1 > best_f1:
                     best_c = c_param
                     best_cls = copy.deepcopy(self.cls)
@@ -119,6 +137,7 @@ class SlotClassifier:
             self.logger.info("[SlotClassifier] Training done")
 
     def predict(self, corpus: Corpus) -> None:
+        assert self.cls is not None
         x, _, span_pairs = self.get_features_and_labels(corpus)
         if x.shape[0] == 0:
             # edge case -- we have no span pairs to classify
@@ -208,12 +227,16 @@ class SlotClassifier:
                             new_frame.remove()
                             break
 
-    def evaluate(
-        self, corpus: Corpus, x: Optional[spmatrix] = None, y_gold: Optional[np.ndarray] = None
+    def _eval(
+            self,
+            corpus: Corpus, x: Optional[spmatrix] = None,
+            y_gold: Optional[np.ndarray] = None
     ) -> float:
-
-        """This function evaluates only the slot classifier, assuming
-        the correct spans in gold"""
+        """
+        This function evaluates only the slot classifier, assuming
+        the correct spans in gold
+        """
+        assert self.cls is not None
 
         if x is None:
             x, y_gold, _ = self.get_features_and_labels(corpus)
@@ -488,6 +511,10 @@ class SlotClassifier:
         edge2dep_list: List[Dict[Tuple[int, int], str]],
         sequence_words_list: List[str],
     ) -> spmatrix:
+        assert self.cv_text is not None
+        assert self.cv_labels is not None
+        assert self.cv_deps_words is not None
+        assert self.cv_sequence_text is not None
         # spacy words
 
         self.logger.debug("[SlotClassifier] Getting features (text)...")
@@ -561,30 +588,33 @@ class SlotClassifier:
 
         return X_feats
 
-    def save_model(self, filename: str) -> None:
-        self.logger.info("[SlotClassifier] Saving model to %s", filename)
+    def dump(self, f: IO[bytes]) -> None:
+        self.logger.info("[SlotClassifier] Saving model")
         joblib.dump(
-            [
+            (
+                random.getstate(),
                 self.cls,
                 self.cv_text,
                 self.cv_labels,
                 self.labels,
                 self.cv_deps_words,
                 self.cv_sequence_text,
-            ],
-            filename,
+            ),
+            f,
         )
 
-    def load_model(self, filename: str) -> None:
-        self.logger.info("[SlotClassifier] Loading model from %s", filename)
+    def load(self, f: IO[bytes]) -> None:
+        self.logger.info("[SlotClassifier] Loading model")
         (
+            random_state,
             self.cls,
             self.cv_text,
             self.cv_labels,
             self.labels,
             self.cv_deps_words,
             self.cv_sequence_text,
-        ) = joblib.load(filename)
+        ) = joblib.load(f)
+        random.setstate(random_state)
 
     @staticmethod
     def find_node(doc: Doc, span: Span) -> List[spacy.tokens.Token]:

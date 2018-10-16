@@ -19,7 +19,7 @@ class BRATCorpusIO(CorpusIO):
         self._populate_corpus(corpus, path, load_gold)
         return corpus
 
-    def dump(self, corpus: Corpus, path: str) -> None:
+    def dump(self, corpus: Corpus, path: str, just_predictions: bool = True) -> None:
         if not os.path.isdir(path):
             os.makedirs(path)
         instances_by_doc_id: Dict[str, List[Instance]] = {}
@@ -33,64 +33,74 @@ class BRATCorpusIO(CorpusIO):
             frame_index = 1
             span_index = 1
             indices: Dict[Union[Frame, Span], str] = {}
-            text_path = os.path.join(path, doc_id + ".txt")
-            annotation_path = os.path.join(path, doc_id + ".ann")
-            with open(text_path, "w") as text_file, open(annotation_path, "w") as annotation_file:
-                specified_span_indices: Set[int] = set()
-                for instance in instances:
-                    for span in instance.spans:
-                        if span.index is not None:
-                            specified_span_indices.add(span.index)
-                for instance in instances:
-                    text_path = os.path.join(path, instance.document_id + ".txt")
-                    annotation_path = os.path.join(path, instance.document_id + ".ann")
-                    text_file.write(instance.text)
-                    for span in instance.spans:
-                        if span.index is None:
-                            while span_index in specified_span_indices:
+
+            a2_path = os.path.join(path, doc_id + ".a2")
+            if just_predictions:
+                a1_path = text_path = os.devnull
+            else:
+                a1_path = os.path.join(path, doc_id + ".a1")
+                text_path = os.path.join(path, doc_id + ".txt")
+
+            with open(text_path, "w") as text_file, open(a1_path, "w") as a1_file:
+                with open(a2_path, "w") as a2_file:
+                    specified_span_indices: Set[int] = set()
+                    for instance in instances:
+                        for span in instance.spans:
+                            if span.index is not None:
+                                specified_span_indices.add(span.index)
+                    for instance in instances:
+                        text_file.write(instance.text)
+                        for span in instance.spans:
+                            if span.index is None:
+                                while span_index in specified_span_indices:
+                                    span_index += 1
+                                span.index = span_index
                                 span_index += 1
-                            span.index = span_index
-                            span_index += 1
-                        annotation_file.write(
-                            "T%d\t%s %d %d\t%s\n"
-                            % (
-                                span.index,
-                                span.span_type.name,
-                                span.left + offset,
-                                span.right + offset,
-                                span.text,
+                            annotation_file = a1_file if span.source == 'given' else a2_file
+                            annotation_file.write(
+                                "T%d\t%s %d %d\t%s\n"
+                                % (
+                                    span.index,
+                                    span.span_type.name,
+                                    span.left + offset,
+                                    span.right + offset,
+                                    span.text,
+                                )
                             )
-                        )
-                        indices[span] = "T%d" % span.index
-                    for frame in instance.frames:
-                        indices[frame] = "E%d" % frame_index
-                        frame_index += 1
-                    for frame in instance.frames:
-                        logger.debug("[BRATCorpusIO] Frame: %r", frame)
-                        s = indices[frame] + "\t"
-                        for slot_type, slot in frame.slots.items():
-                            for filler in slot.fillers:
-                                s += "%s:%s " % (slot_type.name, indices[filler])
-                        annotation_file.write(s[:-1] + "\n")
-                    offset += len(instance.text)
+                            indices[span] = "T%d" % span.index
+                        for frame in instance.frames:
+                            indices[frame] = "E%d" % frame_index
+                            frame_index += 1
+                        for frame in instance.frames:
+                            logger.debug("[BRATCorpusIO] Frame: %r", frame)
+                            s = indices[frame] + "\t"
+                            for slot_type, slot in frame.slots.items():
+                                for filler in slot.fillers:
+                                    s += "%s:%s " % (slot_type.name, indices[filler])
+                            annotation_file = a1_file if frame.source == 'given' else a2_file
+                            annotation_file.write(s[:-1] + "\n")
+                        offset += len(instance.text)
 
     def _populate_corpus(self, corpus: Corpus, path: str, load_gold: bool) -> None:
         doc_id_list = list(
             {fname[:-4] for fname in os.listdir(path) if fname.endswith(".txt")}
         )
         for cur_id in doc_id_list:
-            annotation2filename: Optional[str] = None
+            a1_filename: Optional[str] = os.path.join(path, (cur_id + ".a1"))
+            assert a1_filename is not None  # thanks mypy...
+            if not os.path.isfile(a1_filename):
+                a1_filename = None
+            a2_filename: Optional[str] = None
             if load_gold:
-                annotation2filename = os.path.join(path, (cur_id + ".a2"))
-            annotation1filename: Optional[str] = None
-            if os.path.exists(os.path.join(path, (cur_id + ".a1"))):
-                annotation1filename = os.path.join(path, (cur_id + ".a1"))
+                a2_filename = os.path.join(path, (cur_id + ".a2"))
+                if not os.path.isfile(a2_filename):
+                    a2_filename = None
             self.read_data(
                 corpus=corpus,
                 textfilename=os.path.join(path, (cur_id + ".txt")),
                 doc_id=cur_id,
-                annotation1filename=annotation1filename,
-                annotation2filename=annotation2filename,
+                a1_filename=a1_filename,
+                a2_filename=a2_filename,
             )
 
     def read_data(
@@ -98,14 +108,14 @@ class BRATCorpusIO(CorpusIO):
         corpus: Corpus,
         textfilename: str,
         doc_id: str,
-        annotation1filename: Optional[str] = None,
-        annotation2filename: Optional[str] = None,
+        a1_filename: Optional[str] = None,
+        a2_filename: Optional[str] = None,
     ) -> None:
         annotation_filenames = []
-        if annotation1filename is not None:
-            annotation_filenames.append(annotation1filename)
-        if annotation2filename is not None:
-            annotation_filenames.append(annotation2filename)
+        if a1_filename is not None:
+            annotation_filenames.append(a1_filename)
+        if a2_filename is not None:
+            annotation_filenames.append(a2_filename)
 
         # construct our instances
         instances = []
@@ -121,6 +131,10 @@ class BRATCorpusIO(CorpusIO):
         spans = {}
         frames = {}
         for filename in annotation_filenames:
+            if filename == a1_filename:
+                source = "given"
+            else:
+                source = "gold"
             with open(filename) as f:
                 for line in f:
                     line = line.strip()
@@ -138,7 +152,8 @@ class BRATCorpusIO(CorpusIO):
                                     span_type,
                                     s_left - i_left,
                                     s_right - i_left,
-                                    int(tag[1:])
+                                    source=source,
+                                    index=int(tag[1:])
                                 )
                                 spans[tag] = span
                                 break
@@ -150,7 +165,7 @@ class BRATCorpusIO(CorpusIO):
                         if type(frame_type) is not FrameType:
                             continue
                         frame_type = cast(FrameType, frame_type)
-                        frames[tag] = Frame(frame_type, None)
+                        frames[tag] = Frame(frame_type, None, source)
 
         annotations: Dict[str, Filler] = {**spans, **frames}
 

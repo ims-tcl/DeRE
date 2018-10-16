@@ -1,10 +1,12 @@
 import importlib
+import json
+from typing import Optional, Dict, Any, Type
 import logging
 import os
 import pickle
 import sys
 import warnings
-from typing import Optional
+
 
 logger = logging.getLogger("dere")  # noqa
 handler = logging.StreamHandler()  # noqa
@@ -33,17 +35,44 @@ old_warn = warnings.showwarning  # noqa
 warnings.showwarning = warn  # noqa
 
 import dere.taskspec
+from dere.taskspec import TaskSpecification
 from dere.corpus_io import CorpusIO, BRATCorpusIO, CQSACorpusIO
-from dere.models import BaselineModel, NOPModel
+from dere.models import Model, BaselineModel, NOPModel
 from dere.corpus import Corpus
+import dere.evaluation
+from dere.evaluation import Result
 
 # restore ability to use warnings
 warnings.showwarning = old_warn
 
-
 CORPUS_IOS = {"BRAT": BRATCorpusIO, "CQSA": CQSACorpusIO}
 
-MODELS = {"baseline": BaselineModel, "nop": NOPModel}
+
+def instantiate_model(task_spec: TaskSpecification, model_spec: Dict[str, Any]) -> Model:
+    model_type = model_spec['model_type']
+    if "." not in model_type:
+        model_type = "dere.models.%s" % model_type
+    module, _, class_ = model_type.rpartition(".")
+    model_module = importlib.import_module(module)
+    model_class = getattr(model_module, class_)
+    params = model_spec.get('params', {})
+    model = model_class(task_spec, model_spec, **params)
+    assert isinstance(model, Model)
+    return model
+
+
+def load_model(path: str) -> Model:
+    with open(path, 'rb') as f:
+        task_spec, model_spec = pickle.load(f)
+        model = instantiate_model(task_spec, model_spec)
+        model.load(f)
+        return model
+
+
+def save_model(model: Model, path: str) -> None:
+    with open(path, 'wb') as f:
+        pickle.dump((model.task_spec, model.model_spec), f)
+        model.dump(f)
 
 
 @click.group()
@@ -67,32 +96,34 @@ def cli(verbose: bool, quiet: int) -> None:
     logging.basicConfig(stream=sys.stderr, level=verbosity)
     if not verbose:
         warnings.simplefilter("ignore")
+    sys.path.append(os.getcwd())
 
 
 @cli.command()
-@click.option("--model", default="baseline")
-@click.option("--spec", required=True)
+@click.option("--task-spec", required=True)
+@click.option("--model-spec", required=True)
 @click.option("--outfile", default="bare_model.pkl")
-def build(model: str, spec: str, outfile: str) -> None:
-    _build(model, spec, outfile)
+def build(task_spec: str, model_spec: str, outfile: str) -> None:
+    _build(task_spec, model_spec, outfile)
 
 
-def _build(model_name: str, spec_path: str, out_path: str) -> None:
+def _build(task_spec_path: str, model_spec_path: str, out_path: str) -> None:
     logger.info(
-        "[main] Building with model %s, specification %s, outputting to %s",
-        model_name,
-        spec_path,
+        "[main] Building model with task spec %s and model spec %s, outputting to %s",
+        task_spec_path,
+        model_spec_path,
         out_path,
     )
-    spec = dere.taskspec.load_from_xml(spec_path)
-    try:
-        model = MODELS[model_name](spec)
-    except KeyError:
-        module, _, class_ = model_name.rpartition(".")
-        model_module = importlib.import_module(module)
-        model = getattr(model_module, class_)(spec)
-    with open(out_path, "wb") as f:
-        pickle.dump(model, f)
+    task_spec = dere.taskspec.load_from_xml(task_spec_path)
+    with open(model_spec_path) as sf:
+        model_spec = json.load(sf)
+        # TODO Sean: Is there a better way to do this?
+        # I want to allow relative paths in the model spec to be relative to the model spec file's location
+        model_spec['__path__'] = model_spec_path
+
+    model = instantiate_model(task_spec, model_spec)
+    model.initialize()
+    save_model(model, out_path)
 
 
 @cli.command()
@@ -127,10 +158,9 @@ def _train(
         model_path,
         out_path,
     )
-    with open(model_path, "rb") as f:
-        model = pickle.load(f)
+    model = load_model(model_path)
 
-    corpus_io = CORPUS_IOS[corpus_format](model.spec)
+    corpus_io = CORPUS_IOS[corpus_format](model.task_spec)
     corpus = corpus_io.load(corpus_path, load_gold=True)
 
     dev_corpus: Optional[Corpus] = None
@@ -141,8 +171,7 @@ def _train(
         corpus, dev_corpus = corpus.split(ratio)
 
     model.train(corpus, dev_corpus)
-    with open(out_path, "wb") as f:
-        pickle.dump(model, f)
+    save_model(model, out_path)
 
 
 @cli.command()
@@ -169,13 +198,12 @@ def _predict(
     output_path: str,
 ) -> None:
     logger.info("[main] Predicting on corpus %s and model %s", corpus_path, model_path)
-    with open(model_path, "rb") as f:
-        model = pickle.load(f)
+    model = load_model(model_path)
 
-    input_corpus_io = CORPUS_IOS[corpus_format](model.spec)
+    input_corpus_io = CORPUS_IOS[corpus_format](model.task_spec)
     if output_format is None:
         output_format = corpus_format
-    output_corpus_io = CORPUS_IOS[output_format](model.spec)
+    output_corpus_io = CORPUS_IOS[output_format](model.task_spec)
 
     corpus = input_corpus_io.load(corpus_path, False)
 
@@ -184,29 +212,26 @@ def _predict(
     if not os.path.isdir(output_path):
         os.makedirs(output_path, exist_ok=True)
 
-    output_corpus_io.dump(corpus, output_path)
+    output_corpus_io.dump(corpus, output_path, False)
 
 
 @cli.command()
-@click.argument("corpus_path")
-@click.option("--model-path", default="trained_model.pkl")
+@click.option("--hypo", required=True)
+@click.option("--gold", required=True)
+@click.option("--task-spec", required=True)
 @click.option("--corpus-format", required=True)
-def evaluate(corpus_path: str, model_path: str, corpus_format: str) -> None:
-    _evaluate(corpus_path, model_path, corpus_format)
+def evaluate(hypo: str, gold: str, task_spec: str, corpus_format: str) -> None:
+    _evaluate(hypo, gold, task_spec, corpus_format)
 
 
-def _evaluate(corpus_path: str, model_path: str, corpus_format: str) -> None:
-    logger.info("[main] Evaluating on corpus %s and model %s", corpus_path, model_path)
-    with open(model_path, "rb") as f:
-        model = pickle.load(f)
-
-    corpus_io = CORPUS_IOS[corpus_format](model.spec)
-    predictions = corpus_io.load(corpus_path, False)
-    gold = corpus_io.load(corpus_path, True)
-
-    model.predict(predictions)
-    result = model.eval(gold, predictions)
-    logger.info("[main] Result: %r", result)  # or something smarter
+def _evaluate(hypo_path: str, gold_path: str, task_spec_path: str, corpus_format: str) -> None:
+    logger.info("evaluating %s against %s using task specification %s", hypo_path, gold_path, task_spec_path)
+    task_spec = dere.taskspec.load_from_xml(task_spec_path)
+    corpus_io = CORPUS_IOS[corpus_format](task_spec)
+    hypo = corpus_io.load(hypo_path, True)
+    gold = corpus_io.load(gold_path, True)
+    result = dere.evaluation.evaluate(hypo, gold, task_spec)
+    logger.info("\n" + result.report())  # newline to keep the pretty-printed table
 
 
 cli()
