@@ -118,7 +118,7 @@ class SpanClassifier(Model):
                 X_dev2 = self.get_span_type_specific_features(dev_corpus, t)
                 X_dev_merged = self.merge_features(X_dev, X_dev2)
                 y_dev = self.get_binary_labels(dev_corpus, t, use_bio=True)
-                self.logger.info("Starting grid search")
+                self.logger.info("[SpanClassifier] Starting grid search")
                 # optimize on dev
                 best_f1 = -1.0
                 best_setup: Setup = {"c2v": 0.001, "aps": True}
@@ -127,15 +127,20 @@ class SpanClassifier(Model):
                 c2v_possibilities = [0.001, 0.01, 0.1, 0.3, 0.5, 0.6, 0.9,
                                      0.99, 1.0, 1.3, 1.6, 3.0, 6.0, 10.0]
                 num_hyperparam_combination = len(aps_possibilities) * len(c2v_possibilities)
-                index = 0
-                for aps in aps_possibilities:
+                for aps_index, aps in enumerate(aps_possibilities):
                     if stopTraining:
                         break
-                    for c2v in progressify(c2v_possibilities, "c2v value: %i"):
+
+                    def message(i: int, val: float) -> str:
+                        return "c2v value: {} | {}/{}".format(
+                            val,
+                            aps_index * len(c2v_possibilities) + i + 1,
+                            num_hyperparam_combination,
+                        )
+
+                    for c2v in progressify(c2v_possibilities, message):
                         if stopTraining:
                             break
-                        index += 1
-                        self.logger.info(str(index) + "/" + str(num_hyperparam_combination))
                         cur_setup: Setup = {"aps": aps, "c2v": c2v}
                         self.logger.debug("[SpanClassifier] Current setup: " + str(cur_setup))
                         crf = CRF(
@@ -172,7 +177,7 @@ class SpanClassifier(Model):
                 )
                 crf.fit(X_train_all, target_all)
                 self.target2classifier[t.name] = crf
-            self.logger.info("Finished training")
+            self.logger.info("[SpanClassifier] Finished training")
 
     def _eval(
         self, classifier: CRF, X_dev: List[List[Features]], y_dev: List[List[str]]

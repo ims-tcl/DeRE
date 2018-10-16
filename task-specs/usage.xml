@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE deREschema SYSTEM "dere.dtd">
+<!-- http://www.romanklinger.de/usagecorpus/ -->
+<deREschema name="Aspect-based sentiment analysis" version="0.01" author="Heike Adel">
+  <spans>
+    <span name="positive" predict="True"/>
+    <span name="negative" predict="True"/>
+    <span name="neutral" predict="True"/>
+    <span name="aspect" predict="True"/>
+  </spans>
+  <frames>
+    <frame name="positive">
+	<slot name="positive" types="span:positive" cardinality="1"/>      
+	<slot name="target" types="aspect" cardinality="1"/>
+    </frame>
+    <frame name="negative">
+	<slot name="negative" types="span:negative" cardinality="1"/>
+	<slot name="target" types="aspect" cardinality="1"/>
+    </frame>
+    <frame name="neutral">
+	<slot name="neutral" types="span:neutral" cardinality="1"/>
+	<slot name="target" types="aspect" cardinality="1"/>
+    </frame>
+ </frames>      
+</deREschema>
