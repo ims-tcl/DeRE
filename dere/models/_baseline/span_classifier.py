@@ -120,6 +120,7 @@ class SpanClassifier:
                 for aps_index, aps in enumerate(aps_possibilities):
                     if stopTraining:
                         break
+
                     def message(i: int, val: float) -> str:
                         return "c2v value: {} | {}/{}".format(
                             val,

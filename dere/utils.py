@@ -60,6 +60,7 @@ def progressify(seq: Sequence[T], message: Union[str, Callable[[int, T], str]] =
             for key in replacements:
                 s = format_str.replace(key, str(replacements[key]))
             return s
+    assert not isinstance(message, str)
     try:
         print("\033[?25l")  # hide the cursor
         length = len(seq)
