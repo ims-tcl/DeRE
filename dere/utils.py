@@ -42,7 +42,7 @@ def progressify(seq: Sequence[T], message: Union[str, Callable[[int, T], str]] =
             do_something_with(element)  # progress bar is updated at each step
 
         for x in range(2):
-            for y in progressify(range(3), "step %c/6", calc=f"{x}*3+%i+1"):
+            for y in progressify(range(3), lambda i, _: "step %d/6" % (x * 3 + i + 1)):
                 pass # e.g. "[▓▓░] step 5/6" when x==1 and y==2
     """
     if isinstance(message, str):
