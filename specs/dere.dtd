@@ -1,4 +1,4 @@
-<!ELEMENT deREschema (spantypes | frames)*>
+<!ELEMENT deREschema (spans | frames)*>
 <!ATTLIST deREschema name CDATA #REQUIRED>
 <!ATTLIST deREschema version CDATA #REQUIRED>
 <!ATTLIST deREschema author CDATA #REQUIRED>
@@ -6,7 +6,7 @@
 <!ELEMENT uniontype EMPTY>
 <!ATTLIST uniontype name CDATA #REQUIRED>
 <!ATTLIST uniontype includes CDATA #REQUIRED>
-<!ELEMENT spantypes (span)*>
+<!ELEMENT spans (span)*>
 <!ELEMENT frames (frame)*>
 
 <!ATTLIST frame name CDATA #IMPLIED>
@@ -21,3 +21,4 @@
 
 <!ELEMENT span EMPTY>
 <!ATTLIST span name CDATA #IMPLIED>
+<!ATTLIST span predict CDATA #IMPLIED>
