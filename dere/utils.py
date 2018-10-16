@@ -4,7 +4,7 @@ from typing import Sequence, Generator, TypeVar
 T = TypeVar("T")
 
 
-def progressify(seq: Sequence[T], string: str = "") -> Generator[T, None, None]:
+def progressify(seq: Sequence[T], string: str = "", *, calc: str = "") -> Generator[T, None, None]:
     """
     Display a progress bar in the terminal while iterating over a sequence.
 
@@ -27,8 +27,14 @@ def progressify(seq: Sequence[T], string: str = "") -> Generator[T, None, None]:
     Args:
         seq: The sequence of elements to iterate over (often a list).
         string: An optional message that can be printed along with the bar. It
-            can contain the special sequence "%i", which will be replaced with
-            a string representation of the current item.
+            can contain the special sequences starting with a percent sign that
+            will be replaced by various values:
+                %i    Index (starting from 0)
+                %e    Current element
+                %c    Result of calculation (see below)
+        calc: An optional argument that contains a string that will be
+            evaluated at every step of the iteration. It is then used to
+            replace the special sequence %c.
 
     Yields:
         The elements from seq.
@@ -36,19 +42,39 @@ def progressify(seq: Sequence[T], string: str = "") -> Generator[T, None, None]:
     Example:
         for element in progressify([0.01, 0.1, 0.25, 0.5, 0.9, 0.99]):
             do_something_with(element)  # progress bar is updated at each step
+
+        for x in range(2):
+            for y in progressify(range(3), "step %c/6", calc=f"{x}*3+%i+1"):
+                pass # e.g. "[▓▓░] step 5/6" when x==1 and y==2
     """
     try:
         print("\033[?25l")  # hide the cursor
         length = len(seq)
         maxlen = 30
         for i, element in enumerate(seq):
+            # we copy the index (i) in order for %i to refer to the real,
+            # rather than the scaled index
             if length > maxlen:
-                i = int(i * maxlen/length)
+                i_chars = int(i * maxlen/length)
+            else:
+                i_chars = i
+            # map special sequences to special values
+            replacements = {
+                "%i": i,
+                "%e": element,
+            }
+            # copies so we evaluate this at every step
+            s, c = string, calc
+            for key in replacements:
+                s = s.replace(key, str(replacements[key]))
+                c = c.replace(key, str(replacements[key]))
+            if c:
+                s = s.replace("%c", str(eval(c)))
             print(
                 "\r[{}{}] {}".format(
-                    "▓"*(i+1),
-                    "░"*((length if length <= maxlen else maxlen)-i-1),
-                    string.replace("%i", str(element)),
+                    "▓"*(i_chars+1),
+                    "░"*((length if length <= maxlen else maxlen)-i_chars-1),
+                    s,
                 ),
                 file=sys.stderr,
                 flush=True,  # to see the updated bar immediately
