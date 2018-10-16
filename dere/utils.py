@@ -26,13 +26,13 @@ def progressify(seq: Sequence[T], message: Union[str, Callable[[int, T], str]] =
 
     Args:
         seq: The sequence of elements to iterate over (often a list).
-        string: An optional message that can be printed along with the bar. If it
-            is a string, it will be printed, with special sequences starting with
-            a percent sign replaced by various values:
+        message: An optional message that can be printed along with the bar. If
+            it is a string, it will be printed, with special sequences starting
+            with a percent sign replaced by various values:
                 %i    Index (starting from 0)
                 %e    Current element
             If it is a callable, it will be called with (index, current_element)
-            as arguments, and its return value will be printed
+            as arguments, and its return value will be printed.
 
     Yields:
         The elements from seq.
@@ -42,7 +42,9 @@ def progressify(seq: Sequence[T], message: Union[str, Callable[[int, T], str]] =
             do_something_with(element)  # progress bar is updated at each step
 
         for x in range(2):
-            for y in progressify(range(3), lambda i, _: "step %d/6" % (x * 3 + i + 1)):
+            def message(index, element):
+                return f"step {x*3 + i + 1}/6"
+            for y in progressify(range(3), message):
                 pass # e.g. "[▓▓░] step 5/6" when x==1 and y==2
     """
     if isinstance(message, str):
@@ -58,7 +60,6 @@ def progressify(seq: Sequence[T], message: Union[str, Callable[[int, T], str]] =
             for key in replacements:
                 s = format_str.replace(key, str(replacements[key]))
             return s
-    assert not isinstance(message, str)
     try:
         print("\033[?25l")  # hide the cursor
         length = len(seq)

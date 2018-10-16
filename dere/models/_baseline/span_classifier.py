@@ -120,14 +120,14 @@ class SpanClassifier:
                 for aps_index, aps in enumerate(aps_possibilities):
                     if stopTraining:
                         break
-                    for c2v in progressify(
-                        c2v_possibilities,
-                        lambda i, val: ("c2v value: %f | %d/%d" % (
+                    def message(i: int, val: float) -> str:
+                        return "c2v value: {} | {}/{}".format(
                             val,
                             aps_index * len(c2v_possibilities) + i + 1,
-                            num_hyperparam_combination
-                        ))
-                    ):
+                            num_hyperparam_combination,
+                        )
+
+                    for c2v in progressify(c2v_possibilities, message):
                         if stopTraining:
                             break
                         cur_setup: Setup = {"aps": aps, "c2v": c2v}
