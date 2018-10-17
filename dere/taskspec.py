@@ -7,6 +7,7 @@ import xml.etree.ElementTree as ET
 @dataclass(frozen=True)
 class SpanType:
     name: str
+    predict: bool
 
 
 @dataclass(frozen=True)
@@ -88,7 +89,12 @@ def load_from_xml(path: str) -> TaskSpecification:
                 if spantag.tag != "span":
                     continue
                 span_name = spantag.attrib["name"]
-                span_type = SpanType(span_name)
+                predict_string = spantag.attrib["predict"]
+                if predict_string == "True":
+                    predict = True
+                else:
+                    predict = False
+                span_type = SpanType(span_name, predict)
                 span_types[span_name] = span_type
                 symbols[span_name] = span_type
                 symbols["span:" + span_name] = span_type
