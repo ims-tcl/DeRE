@@ -132,13 +132,19 @@ class SpanClassifier(Model):
                         break
 
                     def message(i: int, val: float) -> str:
-                        return "c2v value: {} | {}/{}".format(
+                        return "c2v: {}, aps: {} | {}/{}".format(
                             val,
-                            aps_index * len(c2v_possibilities) + i + 1,
+                            aps,
+                            i + 1,
                             num_hyperparam_combination,
                         )
 
-                    for c2v in progressify(c2v_possibilities, message):
+                    for c2v in progressify(
+                        c2v_possibilities,
+                        message,
+                        offset=aps_index*len(c2v_possibilities),
+                        length=num_hyperparam_combination,
+                    ):
                         if stopTraining:
                             break
                         cur_setup: Setup = {"aps": aps, "c2v": c2v}
