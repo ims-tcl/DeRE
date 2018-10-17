@@ -20,5 +20,5 @@
 <!ATTLIST slot cardinality CDATA #IMPLIED>
 
 <!ELEMENT span EMPTY>
-<!ATTLIST span name CDATA #IMPLIED>
-<!ATTLIST span predict CDATA #IMPLIED>
+<!ATTLIST span name CDATA #REQUIRED>
+<!ATTLIST span predict CDATA #REQUIRED>

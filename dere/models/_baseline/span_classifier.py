@@ -34,7 +34,13 @@ class SpanClassifier(Model):
             gazetteer: Optional[str] = None
     ) -> None:
         super().__init__(task_spec, model_spec)
-        self.target_span_types = list(task_spec.span_types)
+        self.target_span_types: List[SpanType] = []
+        self.given_span_types: List[SpanType] = []
+        for span_type in list(task_spec.span_types):
+            if span_type.predict:
+                self.target_span_types.append(span_type)
+            else:
+                self.given_span_types.append(span_type)
         self.gazetteer: Dict[str, Set[str]] = {}
         if gazetteer is not None:
             model_spec_dir = os.path.join(*os.path.split(model_spec['__path__'])[:-1])
@@ -46,16 +52,7 @@ class SpanClassifier(Model):
 
         self.target2classifier: Dict[str, CRF] = {}
         self.ps = PorterStemmer()
-        # @Sean: TODO: read from spec which spans are given (if any)
 
-        given_span_types = [task_spec.type_lookup("Protein")]
-        given_span_types = [gst for gst in given_span_types if gst is not None]
-        for given_span_type in given_span_types:
-            assert type(given_span_type) is SpanType
-        self.given_span_types = cast(List[SpanType], given_span_types)
-        for t in self.target_span_types:
-            if t in self.given_span_types:  # no need to predict given spans
-                self.target_span_types.remove(t)
         # initialize everything necessary
         self.logger.debug("[SpanClassifier] initialized successfully")
 
@@ -118,7 +115,7 @@ class SpanClassifier(Model):
                 X_dev2 = self.get_span_type_specific_features(dev_corpus, t)
                 X_dev_merged = self.merge_features(X_dev, X_dev2)
                 y_dev = self.get_binary_labels(dev_corpus, t, use_bio=True)
-                self.logger.info("[SpanClassifier] Starting grid search")
+                self.logger.info("[SpanClassifier] Starting grid search for " + t.name)
                 # optimize on dev
                 best_f1 = -1.0
                 best_setup: Setup = {"c2v": 0.001, "aps": True}
@@ -207,7 +204,7 @@ class SpanClassifier(Model):
                 "[SpanClassifier] target span types are not initialized. Use train function"
                 + " first or load existing model to initialize it"
             )
-            return []
+            return
         X_test = self.get_features(corpus)
         predictions = {}
         for t in self.target_span_types:
