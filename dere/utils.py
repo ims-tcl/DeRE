@@ -54,6 +54,7 @@ def progressify(seq: Sequence[T], message: Union[str, Callable[[int, T], str]] =
             for y in progressify(range(3), message):
                 pass # e.g. "[▓▓░] step 5/6" when x==1 and y==2
     """
+    longest = 0
     if isinstance(message, str):
         format_str = message
 
@@ -73,6 +74,9 @@ def progressify(seq: Sequence[T], message: Union[str, Callable[[int, T], str]] =
         length = len(seq)
         maxlen = 30
         for i, element in enumerate(seq):
+            msg = message(i, element)
+            if len(msg) > longest:
+                longest = len(msg)
             # we copy the index (i) in order for %i to refer to the real,
             # rather than the scaled index
             if length > maxlen:
@@ -83,7 +87,7 @@ def progressify(seq: Sequence[T], message: Union[str, Callable[[int, T], str]] =
                 "\r[{}{}] {}".format(
                     "▓"*(i_chars+1),
                     "░"*((length if length <= maxlen else maxlen)-i_chars-1),
-                    message(i, element),
+                    msg.ljust(longest),
                 ),
                 file=sys.stderr,
                 flush=True,  # to see the updated bar immediately
