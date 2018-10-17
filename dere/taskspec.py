@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Tuple, Optional, Union, Dict
+from typing import Tuple, Optional, Union, Dict, Any
 from dataclasses import dataclass, field
 import xml.etree.ElementTree as ET
 
@@ -23,6 +23,11 @@ class FrameType:
 
     def __hash__(self) -> int:
         return hash(self.name)
+
+    def __eq__(self, other: Any) -> bool:
+        if not isinstance(other, FrameType):
+            return NotImplemented
+        return self.name == other.name
 
 
 @dataclass(frozen=True)
