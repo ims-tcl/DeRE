@@ -166,6 +166,11 @@ class Result:
             task_spec: The TaskSpecification of the model being evaluated
         """
         self.task_spec = task_spec
+        self.span_types = [st for st in task_spec.span_types if st.predict]
+        self.frame_types = list(task_spec.frame_types)
+        self.sf_types: List[_SFType] = []
+        self.sf_types.extend(self.span_types)
+        self.sf_types.extend(self.frame_types)
         self.true_positives: Dict[_SFType, int] = defaultdict(int)
         self.false_positives: Dict[_SFType, int] = defaultdict(int)
         self.false_negatives: Dict[_SFType, int] = defaultdict(int)
@@ -299,9 +304,7 @@ class Result:
         """
         assert self.task_spec == other.task_spec
         r = Result(self.task_spec)
-        sftypes: Tuple[_SFType, ...] = self.task_spec.span_types
-        sftypes += self.task_spec.frame_types
-        for sf_type in sftypes:
+        for sf_type in self.sf_types:
             r.true_positives[sf_type] = self.true_positives[sf_type] + other.true_positives[sf_type]
             r.false_positives[sf_type] = self.false_positives[sf_type] + other.false_positives[sf_type]
             r.false_negatives[sf_type] = self.false_negatives[sf_type] + other.false_negatives[sf_type]
@@ -314,15 +317,15 @@ class Result:
         if not isinstance(other, Result):
             return False
         return (
-            self.fscore(self.task_spec.frame_types) == other.fscore(other.task_spec.frame_types)
-            and self.fscore(self.task_spec.span_types) == other.fscore(other.task_spec.span_types)
+            self.fscore(self.frame_types) == other.fscore(other.frame_types)
+            and self.fscore(self.span_types) == other.fscore(other.span_types)
         )
 
     def __lt__(self, other: Result) -> bool:
-        sf = self.fscore(self.task_spec.frame_types)
-        of = other.fscore(other.task_spec.frame_types)
+        sf = self.fscore(self.frame_types)
+        of = other.fscore(other.frame_types)
         if sf == of:
-            return self.fscore(self.task_spec.span_types) < other.fscore(other.task_spec.span_types)
+            return self.fscore(self.span_types) < other.fscore(other.span_types)
         else:
             return sf < of
 
@@ -350,16 +353,14 @@ class Result:
             "Class", "gold", "answer", "match", "recall", "prec.", "fscore"
         ]]
         table.append("-------------- SPAN EVALUATION ------------------")
-        for span_type in self.task_spec.span_types:
+        for span_type in self.span_types:
             table.append(row(span_type, span_type.name))
-        table.append(row(self.task_spec.span_types, "=[SPAN TOTAL]="))
+        table.append(row(self.span_types, "=[SPAN TOTAL]="))
         table.append('----------------------------------------------')
         table.append('-------------- FRAME EVALUATION ------------------')
-        for frame_type in self.task_spec.frame_types:
+        for frame_type in self.frame_types:
             table.append(row(frame_type, frame_type.name))
-        table.append(row(self.task_spec.frame_types, "=[FRAME TOTAL]="))
+        table.append(row(self.frame_types, "=[FRAME TOTAL]="))
         table.append('----------------------------------------------')
-        all_types: Tuple[_SFType, ...] = self.task_spec.span_types
-        all_types += self.task_spec.frame_types
-        table.append(row(all_types, "=[TOTAL]="))
+        table.append(row(self.sf_types, "=[TOTAL]="))
         return _string_table(table)
