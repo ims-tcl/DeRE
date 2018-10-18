@@ -1,4 +1,4 @@
-from typing import Sequence, Iterator, TypeVar, Union, Callable, Type, List, Any, Optional, Dict, IO
+from typing import Sequence, Generator, TypeVar, Union, Callable, Type, List, Any, Optional, Dict, IO
 import inspect
 import pickle
 import sys
@@ -11,7 +11,12 @@ from dere.taskspec import TaskSpecification
 T = TypeVar("T")
 
 
-def progressify(seq: Sequence[T], message: Union[str, Callable[[int, T], str]] = "") -> Iterator[T]:
+def progressify(
+    seq: Sequence[T],
+    message: Union[str, Callable[[int, T], str]] = "",
+    offset: int = 0,
+    length: int = 0,
+) -> Generator[T, None, None]:
     """
     Display a progress bar in the terminal while iterating over a sequence.
 
@@ -40,6 +45,12 @@ def progressify(seq: Sequence[T], message: Union[str, Callable[[int, T], str]] =
                 %e    Current element
             If it is a callable, it will be called with (index, current_element)
             as arguments, and its return value will be printed.
+        offset: An optional offset that can be used to add a value to the index
+            counter. Usually used in combination with length to "join" progress
+            bars in nested loops.
+        length: Override the calculation of maximum length. This can be used
+            together with offset as described below, or to allow progressifying
+            iterables that aren't sequences.
 
     Yields:
         The elements from seq.
@@ -53,7 +64,12 @@ def progressify(seq: Sequence[T], message: Union[str, Callable[[int, T], str]] =
                 return f"step {x*3 + i + 1}/6"
             for y in progressify(range(3), message):
                 pass # e.g. "[▓▓░] step 5/6" when x==1 and y==2
+
+        for x in range(2):
+            for y in progressify(range(3), offset=x*3, length=6):
+                pass # e.g. "[▓▓▓▓▓░]" when x==1 and y==2
     """
+    longest = 0
     if isinstance(message, str):
         format_str = message
 
@@ -69,10 +85,14 @@ def progressify(seq: Sequence[T], message: Union[str, Callable[[int, T], str]] =
             return s
     assert not isinstance(message, str)
     try:
-        print("\033[?25l")  # hide the cursor
-        length = len(seq)
+        print("\033[?25l", end="", flush=True)  # hide the cursor
+        length = length or len(seq)  # allow overriding maximum length
         maxlen = 30
         for i, element in enumerate(seq):
+            i += offset
+            msg = message(i, element)
+            if len(msg) > longest:
+                longest = len(msg)
             # we copy the index (i) in order for %i to refer to the real,
             # rather than the scaled index
             if length > maxlen:
@@ -83,7 +103,7 @@ def progressify(seq: Sequence[T], message: Union[str, Callable[[int, T], str]] =
                 "\r[{}{}] {}".format(
                     "▓"*(i_chars+1),
                     "░"*((length if length <= maxlen else maxlen)-i_chars-1),
-                    message(i, element),
+                    msg.ljust(longest),  # make sure we override previous values
                 ),
                 file=sys.stderr,
                 flush=True,  # to see the updated bar immediately
@@ -91,8 +111,9 @@ def progressify(seq: Sequence[T], message: Union[str, Callable[[int, T], str]] =
             )
             yield element
     finally:
-        print("\033[?25h")  # show the cursor again
-        print()
+        print("\033[?25h", end="", flush=True)  # show the cursor again
+        if i + 1 == length:
+            print()
 
 
 def _grid_search_class(
