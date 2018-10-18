@@ -117,7 +117,7 @@ class SlotClassifier(Model):
                 self.cls = LinearSVC(C=c_param, class_weight="balanced", max_iter=10000)
                 self.cls.fit(x, y)
                 self.logger.debug("[SlotClassifier] current c: " + str(c_param))
-                micro_f1 = self._eval(dev_corpus)
+                micro_f1 = self._eval(dev_corpus, x=x_dev, y_gold=y_dev)
                 if micro_f1 > best_f1:
                     best_c = c_param
                     best_cls = copy.deepcopy(self.cls)
