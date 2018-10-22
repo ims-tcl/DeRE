@@ -4,12 +4,12 @@ This repository will be our main code and development repository for DeRE. Meeti
 
 # Requirements:
 
-# System packages
+## System packages
 
 - `Python 3.6+`
 - `git`
 
-# Installing DeRe
+## Installing DeRe
 
 - `python3 setup.py install`
 
