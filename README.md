@@ -4,18 +4,18 @@ This repository will be our main code and development repository for DeRE. Meeti
 
 # Requirements:
 
-## System packages
+# System packages
 
 - `Python 3.6+`
 - `git`
 
-## Installing Python dependencies
+# Installing Python dependencies
 
 - `python3 setup.py install`
 
 This should install the following dependencies:
 
-```     'mypy == 0.620',
+````     'mypy == 0.620',
         'mypy-extensions == 0.4.1',
         'click == 6.7',
         'numpy >= 1.14.5',
@@ -25,7 +25,7 @@ This should install the following dependencies:
         'nltk == 3.3',
         'networkx >= 2.2',
         'spacy == 2.0.12'
-``` 
+```` 
 
 # Paper
 [DERE: A Task and Domain-Independent Slot Filling Framework for Declarative Relation Extraction](http://aclweb.org/...)
@@ -39,7 +39,7 @@ If you plan to use DeRe please cite this:
 
 ```
 @inproceedings{Adel2018,
-  author = {Heike Adel and Laura Ana Maria Bostan and Sean Papay and Sebastian PadÃ³ and Roman Klinger},
+  author = {Heike Adel and Laura Ana Maria Bostan and Sean Papay and Sebastian Padó and Roman Klinger},
   title = {{DERE}: A Task and Domain-Independent Slot Filling Framework for Declarative Relation Extraction},
   booktitle = {Proceedings of the 2018 Conference on Empirical Methods in Natural Language Processing: System Demonstrations},
   optpages = {},
@@ -53,7 +53,7 @@ If you plan to use DeRe please cite this:
 
 ```
 
-## Tutorials:
+# Tutorials:
 
 ## User
 
