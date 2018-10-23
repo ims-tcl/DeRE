@@ -1,4 +1,4 @@
-# DeRE
+# DeRE ![build status](https://travis-ci.com/ims-tcl/DeRE.svg?branch=master)
 
 
 ## Setup
