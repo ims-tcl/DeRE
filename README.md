@@ -8,7 +8,7 @@
 - `Python 3.7+`
 - `git`
 
-### Installing DeRe
+### Installing DeRE
 
 To install (as user):
 
@@ -39,16 +39,16 @@ See also the [tutorials](#tutorials).
 
 
 ## Paper
-[DERE: A Task and Domain-Independent Slot Filling Framework for Declarative Relation Extraction](http://aclweb.org/...)
+[DeRE: A Task and Domain-Independent Slot Filling Framework for Declarative Relation Extraction](http://aclweb.org/...)
 
 
 ### Reference
-If you plan to use DeRe please cite:
+If you plan to use DeRE please cite:
 
 
     @inproceedings{Adel2018,
       author = {Heike Adel and Laura Ana Maria Bostan and Sean Papay and Sebastian Padó and Roman Klinger},
-      title = {{DERE}: A Task and Domain-Independent Slot Filling Framework for Declarative Relation Extraction},
+      title = {{DeRE}: A Task and Domain-Independent Slot Filling Framework for Declarative Relation Extraction},
       booktitle = {Proceedings of the 2018 Conference on Empirical Methods in Natural Language Processing: System Demonstrations},
       optpages = {},
       year = {2018},
