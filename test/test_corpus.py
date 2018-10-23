@@ -24,6 +24,7 @@ def test_frame_slot_lookup():
     f = Frame(
         frame_type=MockFrameType(list(map(MockSlotType, ["foo", "bar", "baz"]))),
         instance=None,
+        source="doesn't matter",
     )
     assert len(f.slots) == 3
     assert isinstance(f.slot_lookup("foo"), Slot)
@@ -31,8 +32,13 @@ def test_frame_slot_lookup():
 
 
 def test_frame_remove():
+    frames = [
+        Frame(frame_type=MockFrameType([]), instance=None, source=""),
+        Frame(frame_type=MockFrameType([]), instance=None, source=""),
+    ]
     f = Frame(
-        frame_type=MockFrameType([]), instance=MockInstance(frames=["foo", "bar"])
+        frame_type=MockFrameType([]), instance=MockInstance(frames=frames),
+        source="doesn't matter",
     )
     f.instance.frames.append(f)
     f.remove()
@@ -45,7 +51,7 @@ def test_frame_remove():
 def test_span_bad_values():
     with pytest.raises(ValueError):
         # left has to be <= right
-        Span("spantype", 86, 37, None, None)
+        Span("spantype", 86, 37, None, None, None)
 
 
 def test_span_text():
@@ -56,7 +62,7 @@ def test_span_text():
 
 
 def test_span_remove():
-    s = Span("spantype", 1, 2, MockInstance(spans=[1, 2, 3]), None)
+    s = Span("spantype", 1, 2, MockInstance(spans=[1, 2, 3]), None, None)
     s.instance.spans.append(s)
     assert len(s.instance.spans) == 4
     s.remove()
