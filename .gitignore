@@ -4,6 +4,3 @@ __pycache__/
 *.pkl
 tutorial/data/predict/
 .idea/
-_build
-_static
-_templates
