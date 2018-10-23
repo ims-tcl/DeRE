@@ -216,21 +216,21 @@ def _predict(
 
 
 @cli.command()
-@click.option("--hypo", required=True)
+@click.option("--predicted", required=True)
 @click.option("--gold", required=True)
 @click.option("--task-spec", required=True)
 @click.option("--corpus-format", required=True)
-def evaluate(hypo: str, gold: str, task_spec: str, corpus_format: str) -> None:
-    _evaluate(hypo, gold, task_spec, corpus_format)
+def evaluate(predicted: str, gold: str, task_spec: str, corpus_format: str) -> None:
+    _evaluate(predicted, gold, task_spec, corpus_format)
 
 
-def _evaluate(hypo_path: str, gold_path: str, task_spec_path: str, corpus_format: str) -> None:
-    logger.info("evaluating %s against %s using task specification %s", hypo_path, gold_path, task_spec_path)
+def _evaluate(predicted_path: str, gold_path: str, task_spec_path: str, corpus_format: str) -> None:
+    logger.info("evaluating %s against %s using task specification %s", predicted_path, gold_path, task_spec_path)
     task_spec = dere.taskspec.load_from_xml(task_spec_path)
     corpus_io = CORPUS_IOS[corpus_format](task_spec)
-    hypo = corpus_io.load(hypo_path, True)
+    predicted = corpus_io.load(predicted_path, True)
     gold = corpus_io.load(gold_path, True)
-    result = dere.evaluation.evaluate(hypo, gold, task_spec)
+    result = dere.evaluation.evaluate(predicted, gold, task_spec)
     logger.info("\n" + result.report())  # newline to keep the pretty-printed table
 
 
