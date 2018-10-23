@@ -5,8 +5,7 @@ python:
     - "3.7"
 install:
     - pip install .
-    - pip install git+https://github.com/numpy/numpy-stubs.git
-    - pip install pycodestyle mypy
+    - pip install -r dev_requirements.txt
 script:
     - pytest
     - python -m mypy --strict --allow-untyped-decorators --allow-untyped-defs dere/
