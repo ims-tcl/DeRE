@@ -28,13 +28,16 @@ setup(
     tests_require = [
         "pycodestyle",
         "mypy",
-        "git+https://github.com/numpy/numpy-stubs.git",
+        "numpy-stubs",
     ],
     entry_points={
         "console_scripts": [
             "dere = dere.__main__:cli"
         ]
     },
+    dependency_links=[
+        "git+https://github.com/numpy/numpy-stubs.git",
+    ],
     zip_safe=False,
     include_package_data=True,
 )
