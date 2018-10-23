@@ -34,7 +34,7 @@ To use DeRE, refer to the help that can be shown by specifying a `--help` flag e
       evaluate
       predict
       train
-    
+
 See also the [tutorials](#tutorials).
 
 
@@ -42,7 +42,7 @@ See also the [tutorials](#tutorials).
 [DERE: A Task and Domain-Independent Slot Filling Framework for Declarative Relation Extraction](http://aclweb.org/...)
 
 
-### Reference 
+### Reference
 If you plan to use DeRe please cite:
 
 
@@ -67,17 +67,17 @@ In this tutorial we show how you can use a pretrained model for an existing task
 
 You have:
 
-* the BioNLP task already modeled at `task-specs/bionlpst.xml` 
-* a pretrained model called `baseline_trained.pkl` located at `tutorial/model/baseline_trained.pkl` 
+* the BioNLP task already modeled at `task-specs/bionlpst.xml`
+* a pretrained model called `baseline_trained.pkl` located at `tutorial/model/baseline_trained.pkl`
 * an unlabeled corpus (in the BRAT format) located at `tutorial/data/test`
 
-To use the pretrained model to generate predictions on the unlabeled corpus, and output them in the BRAT format at `tutorial/data/predict`, type the following command in your terminal: 
+To use the pretrained model to generate predictions on the unlabeled corpus, and output them in the BRAT format at `tutorial/data/predict`, type the following command in your terminal:
 
-    python3 dere predict --model-path tutorial/model/baseline_trained.pkl --corpus-format BRAT --corpus-path tutorial/data/test --output tutorial/data/predict/
+    $ python3 dere predict --model-path tutorial/model/baseline_trained.pkl --corpus-format BRAT --corpus-path tutorial/data/test --output tutorial/data/predict/
 
 You can check the general usage for `predict` by running:
 
-    python3 dere predict --help
+    $ python3 dere predict --help
 
 
 ### Application Developer
@@ -90,35 +90,35 @@ You  have:
 * an XML task sepcification located at `task-specs/bionlpst.xml`
 
 
-Then you use 
+Then you use
 
-    dere build
-    mkdir tutorial/model
-    python3 dere build --task-spec task-specs/bionlpst.xml --model-spec model-specs/bionlpst-baseline.json --outfile tutorial/model/baseline.pkl
+    $ dere build
+    $ mkdir tutorial/model
+    $ python3 dere build --task-spec task-specs/bionlpst.xml --model-spec model-specs/bionlpst-baseline.json --outfile tutorial/model/baseline.pkl
 
 This will create a new, untrained model, which will be stored in the file `tutorial/model/baseline.pkl`.
 
 To train the model on the training corpus you run:
 
-    python3 dere train --model-path tutorial/model/baseline.pkl --corpus-format BRAT --outfile tutorial/model/baseline_trained.pkl --corpus-path tutorial/data/train
+    $ python3 dere train --model-path tutorial/model/baseline.pkl --corpus-format BRAT --outfile tutorial/model/baseline_trained.pkl --corpus-path tutorial/data/train
 
 The trained model `baseline_trained.pkl` can be now evaluated on the test corpus by first predicting
 the frames using the `predict` command as in:
 
-    python3 dere predict --model-path tutorial/model/baseline_trained.pkl --corpus-format BRAT --corpus-path tutorial/data/test --output tutorial/data/predict/
+    $ python3 dere predict --model-path tutorial/model/baseline_trained.pkl --corpus-format BRAT --corpus-path tutorial/data/test --output tutorial/data/predict/
 
 The predicted annotations for the unlabeled set you find in the text files that end with `.ann` located at `tutorial/data/predict/`.
 
 In order to evaluate the predictions you could use the `evaluate` command by running:
 
-    python3 dere evaluate --predicted tutorial/data/predict --gold tutorial/data/test --task-spec task-specs/bionlpst.xml --corpus-format BRAT
+    $ python3 dere evaluate --predicted tutorial/data/predict --gold tutorial/data/test --task-spec task-specs/bionlpst.xml --corpus-format BRAT
 
 
 You can check the general usage for `evaluate` by running:
 
-    python3 dere evaluate --help
+    $ python3 dere evaluate --help
 
-If you want to model your own task, you first need to specify your new task by writing it as an XML task sepcification. You can do that by following some examples of existing task specification files. These can be found in `task-specs/` in the DeRe repository. Then you will have to save this file as `task-specs/your_awesome_spec.xml`. 
+If you want to model your own task, you first need to specify your new task by writing it as an XML task sepcification. You can do that by following some examples of existing task specification files. These can be found in `task-specs/` in the DeRe repository. Then you will have to save this file as `task-specs/your_awesome_spec.xml`.
 
 The other `dere` commands for work as exemplified already above on the BioNLP task!
 
@@ -143,8 +143,8 @@ class TutorialModel(Model):
         pass
 ```
 
-Save this file as a python script, for example as `tutorial_model.py` and 
-let it be located at `dere/models`. 
+Save this file as a python script, for example as `tutorial_model.py` and
+let it be located at `dere/models`.
 
 - the new Model has to have implemented at least two methods: `train`, `predict`, so implement them
 - `train` gets a `Corpus` as the first argument and optionally another `Corpus`
@@ -157,6 +157,6 @@ To work with your new model within `dere` you can use the already-introduced int
 
 Again, to `build` the new model use:
 
-    python3 dere build tutorial_model.TutorialModel --task-spec task-specs/bionlpst.xml --outfile tutorial/model/tutorial.pkl
+    $ python3 dere build tutorial_model.TutorialModel --task-spec task-specs/bionlpst.xml --outfile tutorial/model/tutorial.pkl
 
 The rest of the commands work as introduced for [User](#user) and [Application Developer](#application-developer).
