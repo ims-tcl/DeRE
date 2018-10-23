@@ -1,2 +1,3 @@
 git+https://github.com/numpy/numpy-stubs
 pycodestyle
+sphinx
