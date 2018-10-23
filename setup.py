@@ -29,7 +29,7 @@ setup(
         "pycodestyle",
         "mypy",
         "git+https://github.com/numpy/numpy-stubs.git",
-    ]
+    ],
     entry_points={
         "console_scripts": [
             "dere = dere.__main__:cli"
