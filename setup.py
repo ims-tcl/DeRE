@@ -11,7 +11,7 @@ setup(
     author="Heike Adel, Laura Bostan, Sean Papay, Roman Klinger, Sebastian Pad\u00f3",
     author_email="dereproject@ims.uni-stuttgart.de",
     license="Apache 2",
-    python_requires=">= 3.7", 
+    python_requires=">= 3.7",
     packages=find_packages(),
     install_requires=[
         "mypy == 0.620",
@@ -25,19 +25,11 @@ setup(
         "networkx >= 2.2",
         "spacy == 2.0.12",
     ],
-    tests_require = [
-        "pycodestyle",
-        "mypy",
-        "numpy-stubs",
-    ],
     entry_points={
         "console_scripts": [
             "dere = dere.__main__:cli"
         ]
     },
-    dependency_links=[
-        "git+https://github.com/numpy/numpy-stubs.git",
-    ],
     zip_safe=False,
     include_package_data=True,
 )
