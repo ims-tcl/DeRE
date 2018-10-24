@@ -69,7 +69,7 @@ for edge in [(0, 2), (1, 2), (2, 3), (3, 4), (4, 7), (5, 7), (6, 7)]:
     ],
 )
 def test_get_shortest_path(graph, tokens1, tokens2, result):
-    sc = SlotClassifier(MockTaskSpec())
+    sc = SlotClassifier(MockTaskSpec(), {})
     if isinstance(result, int):
         assert len(sc.get_shortest_path(graph, tokens1, tokens2)) == result
     else:
@@ -112,7 +112,7 @@ def test_get_shortest_path(graph, tokens1, tokens2, result):
     ],
 )
 def test_edge_words(graph, tokens1, tokens2, idx2word, result):
-    sc = SlotClassifier(MockTaskSpec())
+    sc = SlotClassifier(MockTaskSpec(), {})
     assert sc.edge_words(graph, tokens1, tokens2, idx2word) == result
 
 
@@ -180,7 +180,7 @@ def test_edge_words(graph, tokens1, tokens2, idx2word, result):
     ],
 )
 def test_edge_words_deps(graph, tokens1, tokens2, idx2word, edge2dep, result):
-    sc = SlotClassifier(MockTaskSpec())
+    sc = SlotClassifier(MockTaskSpec(), {})
     assert sc.edge_words_deps(graph, tokens1, tokens2, idx2word, edge2dep) == result
 
 
