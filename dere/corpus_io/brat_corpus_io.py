@@ -49,7 +49,7 @@ class BRATCorpusIO(CorpusIO):
                             if span.index is not None:
                                 specified_span_indices.add(span.index)
                     for instance in instances:
-                        text_file.write(instance.text)
+                        text_file.write(instance.text + "\n")
                         for span in instance.spans:
                             if span.index is None:
                                 while span_index in specified_span_indices:
@@ -79,7 +79,7 @@ class BRATCorpusIO(CorpusIO):
                                     s += "%s:%s " % (slot_type.name, indices[filler])
                             annotation_file = a1_file if frame.source == 'given' else a2_file
                             annotation_file.write(s[:-1] + "\n")
-                        offset += len(instance.text)
+                        offset += len(instance.text + "\n")
 
     def _populate_corpus(self, corpus: Corpus, path: str, load_gold: bool) -> None:
         doc_id_list = list(
@@ -124,7 +124,7 @@ class BRATCorpusIO(CorpusIO):
             for line in f:
                 start_offset = end_offset
                 end_offset = start_offset + len(line)
-                instance = corpus.new_instance(line, doc_id)
+                instance = corpus.new_instance(line[:-1], doc_id)
                 instances.append((start_offset, end_offset, instance))
 
         # First pass -- construct our spans, and instantiate our frames
@@ -143,7 +143,7 @@ class BRATCorpusIO(CorpusIO):
                         span_type_name, sl, sr = type_left_right.split(" ")
                         s_left = int(sl)
                         s_right = int(sr)
-                        span_type = self._spec.type_lookup("span:" + span_type_name)
+                        span_type = self._task_spec.type_lookup("span:" + span_type_name)
                         if not isinstance(span_type, SpanType):
                             continue
                         for i_left, i_right, instance in instances:
@@ -155,13 +155,14 @@ class BRATCorpusIO(CorpusIO):
                                     source=source,
                                     index=int(tag[1:])
                                 )
+                                assert span.text == span_string
                                 spans[tag] = span
                                 break
 
                     elif line[0] == "E":  # Events = frames
                         tag, *kvpairs = line.strip().split()
                         frame_type_name, _ = kvpairs[0].rsplit(":", 1)
-                        frame_type = self._spec.type_lookup("frame:" + frame_type_name)
+                        frame_type = self._task_spec.type_lookup("frame:" + frame_type_name)
                         if type(frame_type) is not FrameType:
                             continue
                         frame_type = cast(FrameType, frame_type)
@@ -177,7 +178,7 @@ class BRATCorpusIO(CorpusIO):
                     if line[0] == "E":
                         tag, *kvpairs = line.strip().split()
                         frame_type_name, _ = kvpairs[0].rsplit(":", 1)
-                        frame_type = self._spec.type_lookup("frame:" + frame_type_name)
+                        frame_type = self._task_spec.type_lookup("frame:" + frame_type_name)
                         if type(frame_type) is not FrameType:
                             continue
                         frame = frames[tag]

@@ -68,12 +68,12 @@ class CQSACorpusIO(CorpusIO):
             self._populate_instance(child, instance, ids, load_gold)
             right = len(instance.text)
             span = None
-            span_type = self._spec.span_type_lookup(child.tag)
+            span_type = self._task_spec.span_type_lookup(child.tag)
             if load_gold and span_type is not None:
                 span = instance.new_span(span_type, left, right, "gold")
                 instance.spans.append(span)
                 ids[child.attrib["id"]] = span
-            frame_type = self._spec.frame_type_lookup(child.tag)
+            frame_type = self._task_spec.frame_type_lookup(child.tag)
             if load_gold and frame_type is not None:
                 frame = instance.new_frame(frame_type, "gold")
                 if span is not None:

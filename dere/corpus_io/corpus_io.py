@@ -7,8 +7,8 @@ from dere.taskspec import TaskSpecification
 
 
 class CorpusIO:
-    def __init__(self, spec: TaskSpecification) -> None:
-        self._spec = spec
+    def __init__(self, task_spec: TaskSpecification) -> None:
+        self._task_spec = task_spec
         self._logger = logging.getLogger(__name__)
 
     def load(self, path: str, load_gold: bool = True) -> Corpus:
