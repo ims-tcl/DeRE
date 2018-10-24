@@ -225,7 +225,11 @@ def evaluate(predicted: str, gold: str, task_spec: str, corpus_format: str) -> N
 
 
 def _evaluate(predicted_path: str, gold_path: str, task_spec_path: str, corpus_format: str) -> None:
-    logger.info("evaluating %s against %s using task specification %s", predicted_path, gold_path, task_spec_path)
+    logger.info(
+        "evaluating %s against %s using task specification %s",
+        predicted_path, gold_path,
+        task_spec_path
+    )
     task_spec = dere.taskspec.load_from_xml(task_spec_path)
     corpus_io = CORPUS_IOS[corpus_format](task_spec)
     predicted = corpus_io.load(predicted_path, True)

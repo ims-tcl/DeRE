@@ -12,7 +12,7 @@ class CorpusIO:
         self._logger = logging.getLogger(__name__)
 
     def load(self, path: str, load_gold: bool = True) -> Corpus:
-        ...
+        raise NotImplementedError()
 
     def dump(self, corpus: Corpus, path: str, just_predictions: bool = True) -> None:
-        ...
+        raise NotImplementedError()

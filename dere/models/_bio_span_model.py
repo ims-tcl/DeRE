@@ -134,3 +134,8 @@ class BIOSpanModel(Model):
             if bio == 'B' or (not strict and bio == 'I' and current_span_left is None):
                 current_span_left = l
             last_token_right = r
+
+        # Emit the final span, if there is one
+        if current_span_left is not None:
+            assert last_token_right is not None
+            instance.new_span(span_type, current_span_left, last_token_right)
