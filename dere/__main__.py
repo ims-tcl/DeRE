@@ -36,7 +36,7 @@ warnings.showwarning = warn  # noqa
 
 import dere.taskspec
 from dere.taskspec import TaskSpecification
-from dere.corpus_io import CorpusIO, BRATCorpusIO, CQSACorpusIO
+from dere.corpus_io import CorpusIO, BRATCorpusIO, CQSACorpusIO, UniversalCorpusIO
 from dere.models import Model, BaselineModel, NOPModel
 from dere.corpus import Corpus
 import dere.evaluation
@@ -45,7 +45,7 @@ from dere.evaluation import Result
 # restore ability to use warnings
 warnings.showwarning = old_warn
 
-CORPUS_IOS = {"BRAT": BRATCorpusIO, "CQSA": CQSACorpusIO}
+CORPUS_IOS = {"BRAT": BRATCorpusIO, "CQSA": CQSACorpusIO, "universal": UniversalCorpusIO}
 
 
 def instantiate_model(task_spec: TaskSpecification, model_spec: Dict[str, Any]) -> Model:
@@ -130,7 +130,7 @@ def _build(task_spec_path: str, model_spec_path: str, out_path: str) -> None:
 @click.option("--corpus-path", required=True)
 @click.option("--model-path", default="bare_model.pkl")
 @click.option("--outfile", default="trained_model.pkl")
-@click.option("--corpus-format", required=True)
+@click.option("--corpus-format", default="universal")
 @click.option("--dev-corpus", required=False)
 @click.option("--corpus-split", required=False)
 def train(
@@ -177,7 +177,7 @@ def _train(
 @cli.command()
 @click.option("--corpus-path", required=True)
 @click.option("--model-path", default="trained_model.pkl")
-@click.option("--corpus-format", required=True)
+@click.option("--corpus-format", default="universal")
 @click.option("--output-format", required=False, default=None)
 @click.option("--output", "-o", required=True)
 def predict(
@@ -201,9 +201,10 @@ def _predict(
     model = load_model(model_path)
 
     input_corpus_io = CORPUS_IOS[corpus_format](model.task_spec)
-    if output_format is None:
-        output_format = corpus_format
-    output_corpus_io = CORPUS_IOS[output_format](model.task_spec)
+    if output_format is None or output_format == corpus_format:
+        output_corpus_io = input_corpus_io
+    else:
+        output_corpus_io = CORPUS_IOS[output_format](model.task_spec)
 
     corpus = input_corpus_io.load(corpus_path, False)
 
@@ -219,7 +220,7 @@ def _predict(
 @click.option("--predicted", required=True)
 @click.option("--gold", required=True)
 @click.option("--task-spec", required=True)
-@click.option("--corpus-format", required=True)
+@click.option("--corpus-format", default="universal")
 def evaluate(predicted: str, gold: str, task_spec: str, corpus_format: str) -> None:
     _evaluate(predicted, gold, task_spec, corpus_format)
 
