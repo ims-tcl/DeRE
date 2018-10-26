@@ -53,7 +53,11 @@ def instantiate_model(task_spec: TaskSpecification, model_spec: Dict[str, Any]) 
     if "." not in model_type:
         model_type = "dere.models.%s" % model_type
     module, _, class_ = model_type.rpartition(".")
+    # allow the model to be in the same dir as the model spec
+    model_spec_dir, _ = os.path.split(model_spec['__path__'])
+    sys.path.append(model_spec_dir)
     model_module = importlib.import_module(module)
+    sys.path = sys.path[:-1]
     model_class = getattr(model_module, class_)
     params = model_spec.get('params', {})
     model = model_class(task_spec, model_spec, **params)
@@ -96,7 +100,6 @@ def cli(verbose: bool, quiet: int) -> None:
     logging.basicConfig(stream=sys.stderr, level=verbosity)
     if not verbose:
         warnings.simplefilter("ignore")
-    sys.path.append(os.getcwd())
 
 
 @cli.command()
