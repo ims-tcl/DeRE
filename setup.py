@@ -23,7 +23,7 @@ setup(
         "sklearn-crfsuite == 0.3.6",
         "nltk == 3.3",
         "networkx >= 2.2",
-        "spacy == 2.0.12",
+        "spacy >= 2.0.12",
     ],
     entry_points={
         "console_scripts": [

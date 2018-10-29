@@ -1,4 +1,4 @@
-git+https://github.com/numpy/numpy-stubs
+git+https://github.com/person594/numpy-stubs.git
 pycodestyle
 sphinx
 recommonmark
