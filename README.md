@@ -39,7 +39,7 @@ See also the [tutorials](#tutorials).
 
 
 ## Paper
-[DeRE: A Task and Domain-Independent Slot Filling Framework for Declarative Relation Extraction](http://aclweb.org/...)
+[DeRE: A Task and Domain-Independent Slot Filling Framework for Declarative Relation Extraction](http://aclweb.org/anthology/D18-2008)
 
 
 ### Reference
