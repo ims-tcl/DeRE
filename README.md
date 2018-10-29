@@ -50,13 +50,14 @@ If you plan to use DeRE please cite:
       author = {Heike Adel and Laura Ana Maria Bostan and Sean Papay and Sebastian Pad\'{o} and Roman Klinger},
       title = {{DeRE}: A Task and Domain-Independent Slot Filling Framework for Declarative Relation Extraction},
       booktitle = {Proceedings of the 2018 Conference on Empirical Methods in Natural Language Processing: System Demonstrations},
-      optpages = {},
+      pages = {42--47},
       year = {2018},
       address = {Brussels, Belgium},
       month = {November},
-      publisher = {Association for Computational Linguistics}
+      publisher = {Association for Computational Linguistics},
+      url = {http://aclweb.org/anthology/D18-2008}
     }
-
+    
 ## Tutorials:
 
 ### User
