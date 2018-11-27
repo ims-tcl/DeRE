@@ -1,9 +1,0 @@
-% annotation
-
-Frame: Emotion
-	FeltEmotion: Joy
-	Feeler: I|0:1
-	Cause: because of cookies|15:35
-
-Frame: Joy
-	Trigger: happy|4:9
